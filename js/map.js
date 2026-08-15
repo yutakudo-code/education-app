@@ -137,7 +137,8 @@ const JapanMap = (() => {
       })
       .attr('text-anchor', 'middle')
       .attr('dy', '0.3em')
-      .attr('font-size', W < 600 ? '6px' : '8px')
+      .attr('font-size', W < 600 ? '10px' : '14px')
+      .attr('font-weight', 'bold')
       .attr('fill', '#444')
       .attr('pointer-events', 'none')
       .text(d => {
@@ -210,7 +211,7 @@ const JapanMap = (() => {
 
     gEl.selectAll('text.pref-label')
       .transition().duration(750)
-      .attr('font-size', (W < 600 ? 6 : 8) / scale + 'px');
+      .attr('font-size', (W < 600 ? 10 : 14) / scale + 'px');
   }
 
   // 進捗カラーを更新（解答後に呼ぶ）
