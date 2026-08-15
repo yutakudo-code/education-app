@@ -73,9 +73,6 @@ class HandwritingCanvas {
     // マウスの右クリックなどは無視
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     
-    // ネイティブの動作（長押しメニューやスクロールなど）を防ぐ
-    e.preventDefault();
-    
     // そのストロークを描き始めたポインターの種類を記録（パームリジェクション用）
     this.activePointerType = e.pointerType;
     this.isDrawing = true;
@@ -271,12 +268,9 @@ class HandwritingCanvas {
     return this.paths.length === 0;
   }
 
-  // Canvas → Base64 PNG（OCR用・白背景）
+  // Canvas → Base64 PNG（OCR用・白背景、ガイドライン除去、高コントラスト化）
   toBase64() {
-    // オフスクリーンキャンバスに白背景で書き出し
     const tmpCanvas = document.createElement('canvas');
-    // アスペクト比を維持しつつ、大きすぎないサイズに縮小（OCR精度と速度のため）
-    // 横幅または縦幅の最大を600px程度にする（画数が多くても潰れにくいように）
     const scale = Math.min(600 / this.canvas.width, 600 / this.canvas.height, 1);
     const W = Math.round(this.canvas.width * scale) || 600;
     const H = Math.round(this.canvas.height * scale) || 600;
@@ -285,15 +279,46 @@ class HandwritingCanvas {
     tmpCanvas.height = H;
     const tmpCtx = tmpCanvas.getContext('2d');
 
-    // 白背景
+    // 完全な白背景
     tmpCtx.fillStyle = '#ffffff';
     tmpCtx.fillRect(0, 0, W, H);
 
-    // メインキャンバスの内容を描画
-    tmpCtx.drawImage(this.canvas, 0, 0, W, H);
+    const dpr = window.devicePixelRatio || 1;
+    tmpCtx.scale(W / (this.canvas.width / dpr), H / (this.canvas.height / dpr));
+
+    // OCR用に、点線のガイドを排除し、真っ黒で一定の太さの線を描画する関数
+    const drawForOCR = (path) => {
+      const pts = path.points;
+      if (pts.length === 0) return;
+      tmpCtx.strokeStyle = '#000000'; // コントラスト最大化
+      tmpCtx.lineCap = 'round';
+      tmpCtx.lineJoin = 'round';
+
+      if (pts.length === 1) {
+        tmpCtx.beginPath();
+        tmpCtx.arc(pts[0].x, pts[0].y, path.penSize / 2, 0, Math.PI * 2);
+        tmpCtx.fillStyle = '#000000';
+        tmpCtx.fill();
+        return;
+      }
+
+      tmpCtx.beginPath();
+      tmpCtx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < pts.length; i++) {
+        tmpCtx.lineTo(pts[i].x, pts[i].y);
+      }
+      // 筆圧に依存せず、少し太めで一定の線を書く（かすれによる認識漏れを防ぐ）
+      tmpCtx.lineWidth = path.penSize * 1.5;
+      tmpCtx.stroke();
+    };
+
+    this.paths.forEach(p => drawForOCR(p));
+    if (this.currentPath.length > 0) {
+      drawForOCR({ points: this.currentPath, penSize: this.penSize });
+    }
 
     const dataURL = tmpCanvas.toDataURL('image/png');
-    return dataURL.split(',')[1]; // base64部分だけ返す
+    return dataURL.split(',')[1];
   }
 
   resize() { this._resize(); }

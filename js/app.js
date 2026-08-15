@@ -63,8 +63,8 @@ document.addEventListener('DOMContentLoaded', () => {
       selectedPref = pref;
       showView('view-step1');
       const isWorld = pref.region === 'world';
-      const actionText = isWorld ? 'カタカナで書こう' : '漢字で書こう';
-      document.getElementById('header-title-text').textContent = isHardMode ? `😈 ${pref.name}を書こう（ノーヒント）` : `✍️ ${pref.name}を${actionText}`;
+      const actionText = currentMapMode === 'japan' ? '漢字で！' : 'カタカナで！';
+      document.getElementById('header-title-text').textContent = isHardMode ? `😈 ここはどこ？（ノーヒント）` : `✍️ ${pref.name}を${actionText}`;
       Quiz.initStep1(pref, currentUser.id, (step) => {
         _onStepComplete(step);
       }, isHardMode);
