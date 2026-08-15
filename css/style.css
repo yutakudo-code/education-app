@@ -44,11 +44,18 @@ body {
   background: var(--bg-grad);
   color: var(--text-dark);
   -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
   user-select: none;
   overscroll-behavior: none;
 }
 button { cursor: pointer; border: none; outline: none; font-family: var(--font-round); }
-input  { font-family: var(--font-round); outline: none; }
+input  { 
+  font-family: var(--font-round); 
+  outline: none; 
+  -webkit-user-select: auto; 
+  user-select: auto; 
+}
 .hidden { display: none !important; }
 
 /* ============================================================
