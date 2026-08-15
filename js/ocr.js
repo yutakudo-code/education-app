@@ -15,7 +15,7 @@ const OCR = (() => {
     const body = {
       requests: [{
         image: { content: base64Image },
-        features: [{ type: 'TEXT_DETECTION', maxResults: 5 }],
+        features: [{ type: 'DOCUMENT_TEXT_DETECTION' }],
         imageContext: { languageHints: ['ja', 'ja-JP'] }
       }]
     };

@@ -44,7 +44,15 @@ body {
   background: var(--bg-grad);
   color: var(--text-dark);
   -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none; /* iOS Safari: 長押しメニュー無効化 */
+  -webkit-user-select: none;   /* iOS Safari: テキスト選択無効化 */
   user-select: none;
+}
+canvas {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  outline: none;
 }
 button { cursor: pointer; border: none; outline: none; font-family: var(--font-round); }
 input  { font-family: var(--font-round); outline: none; }

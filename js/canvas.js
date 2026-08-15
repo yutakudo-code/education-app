@@ -73,6 +73,9 @@ class HandwritingCanvas {
     // マウスの右クリックなどは無視
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     
+    // ネイティブの動作（長押しメニューやスクロールなど）を防ぐ
+    e.preventDefault();
+    
     // そのストロークを描き始めたポインターの種類を記録（パームリジェクション用）
     this.activePointerType = e.pointerType;
     this.isDrawing = true;
