@@ -897,9 +897,9 @@ input  { font-family: var(--font-round); outline: none; }
 /* ============================================================
    iPad 最適化
    ============================================================ */
-@media (max-width: 768px) {
+@media (max-width: 820px) {
   #header-title-text { font-size: 0.95rem; }
-  .step-mini-map-area { width: 120px; }
+  .step-mini-map-area { width: 200px; }
   .cards-grid { grid-template-columns: 1fr; }
   .badges-grid { grid-template-columns: repeat(3, 1fr); }
   .stats-grid { grid-template-columns: repeat(2, 1fr); }

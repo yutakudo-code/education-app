@@ -309,17 +309,22 @@ class HandwritingCanvas {
   toBase64() {
     // オフスクリーンキャンバスに白背景で書き出し
     const tmpCanvas = document.createElement('canvas');
-    // 元のキャンバスの解像度をそのまま維持（アスペクト比が崩れるとOCR精度が落ちるため）
-    tmpCanvas.width = this.canvas.width; 
-    tmpCanvas.height = this.canvas.height;
+    // アスペクト比を維持しつつ、大きすぎないサイズに縮小（OCR精度と速度のため）
+    // 横幅または縦幅の最大を400px程度にする
+    const scale = Math.min(400 / this.canvas.width, 400 / this.canvas.height, 1);
+    const W = Math.round(this.canvas.width * scale) || 400;
+    const H = Math.round(this.canvas.height * scale) || 400;
+    
+    tmpCanvas.width = W; 
+    tmpCanvas.height = H;
     const tmpCtx = tmpCanvas.getContext('2d');
 
     // 白背景
     tmpCtx.fillStyle = '#ffffff';
-    tmpCtx.fillRect(0, 0, tmpCanvas.width, tmpCanvas.height);
+    tmpCtx.fillRect(0, 0, W, H);
 
     // メインキャンバスの内容を描画
-    tmpCtx.drawImage(this.canvas, 0, 0);
+    tmpCtx.drawImage(this.canvas, 0, 0, W, H);
 
     const dataURL = tmpCanvas.toDataURL('image/png');
     return dataURL.split(',')[1]; // base64部分だけ返す
