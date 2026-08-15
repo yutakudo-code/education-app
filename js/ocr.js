@@ -45,9 +45,19 @@ const OCR = (() => {
 
   // テキストを正規化（採点用）
   function normalize(text) {
-    return text.replace(/[\s\n\r]/g, '')
+    let t = text.replace(/[\s\n\r]/g, '')
                .replace(/[ａ-ｚＡ-Ｚ０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0))
                .toLowerCase();
+    // Vision APIで誤認識されやすい漢字をカタカナに変換
+    t = t.replace(/力/g, 'カ')
+         .replace(/二/g, 'ニ')
+         .replace(/口/g, 'ロ')
+         .replace(/工/g, 'エ')
+         .replace(/八/g, 'ハ')
+         .replace(/一/g, 'ー')
+         .replace(/夕/g, 'タ')
+         .replace(/十/g, 'ナ'); // ナが十になることもある
+    return t;
   }
 
   // =====================================================

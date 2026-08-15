@@ -45,6 +45,7 @@ body {
   color: var(--text-dark);
   -webkit-tap-highlight-color: transparent;
   user-select: none;
+  overscroll-behavior: none;
 }
 button { cursor: pointer; border: none; outline: none; font-family: var(--font-round); }
 input  { font-family: var(--font-round); outline: none; }
@@ -418,6 +419,7 @@ input  { font-family: var(--font-round); outline: none; }
   border: 3px solid #e0ddf5;
   box-shadow: inset 0 2px 8px rgba(0,0,0,0.04);
   position: relative;
+  touch-action: none;
 }
 #writing-canvas, #writing-canvas-2 { display: block; }
 .canvas-tools {

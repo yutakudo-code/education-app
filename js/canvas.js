@@ -48,6 +48,14 @@ class HandwritingCanvas {
     c.style.touchAction = 'none'; // スクロール防止
   }
 
+  _getPos(e) {
+    const rect = this.canvas.getBoundingClientRect();
+    return {
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
+    };
+  }
+
   _getPressure(e) {
     if (e.pointerType === 'pen') {
       return e.pressure; // Apple Pencilの場合は0〜1の実際の筆圧を返す（離すときは0に近づく）
