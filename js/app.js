@@ -57,7 +57,9 @@ document.addEventListener('DOMContentLoaded', () => {
     goStep1: (pref, isHardMode = false) => {
       selectedPref = pref;
       showView('view-step1');
-      document.getElementById('header-title-text').textContent = isHardMode ? `😈 ${pref.name}を書こう（ノーヒント）` : `✍️ ${pref.name}を書こう`;
+      const isWorld = pref.region === 'world';
+      const actionText = isWorld ? 'カタカナで書こう' : '漢字で書こう';
+      document.getElementById('header-title-text').textContent = isHardMode ? `😈 ${pref.name}を書こう（ノーヒント）` : `✍️ ${pref.name}を${actionText}`;
       Quiz.initStep1(pref, currentUser.id, (step) => {
         _onStepComplete(step);
       }, isHardMode);
@@ -426,10 +428,15 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const pref = timeAttackQueue[timeAttackCurrentIndex];
     document.getElementById('challenge-counter').textContent = `${timeAttackCurrentIndex + 1} / ${timeAttackTotal}`;
-    document.getElementById('challenge-question').textContent = `✍️ 「${pref.reading}」を漢字で！`;
+    
+    const isWorld = pref.region === 'world';
+    const actionText = isWorld ? 'カタカナで！' : '漢字で！';
+    const readingText = isWorld ? 'この国' : pref.reading;
+    document.getElementById('challenge-question').textContent = `✍️ 「${readingText}」を${actionText}`;
     
     currentRandomStep = 'timeattack';
-    window.AppRouter.goStep1(pref);
+    // タイムアタックでも世界モードの場合はノーヒント（地図だけ）になります
+    window.AppRouter.goStep1(pref, false);
   }
 
   document.getElementById('btn-timeattack')?.addEventListener('click', () => {

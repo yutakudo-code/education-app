@@ -145,7 +145,7 @@ const JapanMap = (() => {
         const area = pathGen.area(d);
         if (area < minArea) return '';
         const pref = getPrefectureByName(d.properties.nam_ja);
-        return pref ? pref.name.replace(/[都道府県]$/, '') : '';
+        return pref ? pref.name.replace(/[都府県]$/, '') : '';
       });
   }
 

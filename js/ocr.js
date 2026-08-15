@@ -67,21 +67,29 @@ const OCR = (() => {
   function judgeStep1(recognized, pref) {
     const rec = normalize(recognized);
     const prefName = pref.name;
-    const prefBase = prefName.replace(/[都道府県]$/, ''); // 末尾の都道府県を除去
+    const prefBase = prefName.replace(/[都府県]$/, '');
 
     if (!rec || rec.length === 0) return { correct: false, score: 0, message: '文字が認識できませんでした。もう少し大きくはっきり書いてみよう！' };
 
+    const validTargets = [normalize(prefName), normalize(prefBase)];
+    if (pref.displayName) validTargets.push(normalize(pref.displayName));
+    if (pref.region === 'world' && pref.reading) validTargets.push(normalize(pref.reading));
+
     // 完全一致
-    if (rec === normalize(prefName)) return { correct: true, score: 100, message: 'かんぺき！' };
-    // ベース部分の一致（「神奈川」→「神奈川県」OK）
-    if (rec === normalize(prefBase)) return { correct: true, score: 95, message: 'せいかい！（「' + prefName.slice(-1) + '」もわすれずに！）' };
+    for (const target of validTargets) {
+      if (rec === target) {
+        return { correct: true, score: 100, message: 'かんぺき！' };
+      }
+    }
     
     // 1文字ミス（惜しい！）
-    if (levenshtein(rec, normalize(prefBase)) === 1 && rec.length === prefBase.length) {
-      // 文字数が同じで1文字だけ違う場合（誤字）
-      return { correct: false, score: 40, message: 'おしい！1文字だけちがうかも！', hint: `「${prefName}」に近いよ！` };
+    for (const target of validTargets) {
+      if (levenshtein(rec, target) === 1 && rec.length === target.length) {
+        return { correct: false, score: 40, message: 'おしい！1文字だけちがうかも！', hint: `「${pref.displayName || prefName}」に近いよ！` };
+      }
     }
-    return { correct: false, score: 0, message: '「' + prefName + '」と書いてみよう！' };
+    
+    return { correct: false, score: 0, message: '「' + (pref.displayName || prefName) + '」と書いてみよう！' };
   }
 
   // =====================================================

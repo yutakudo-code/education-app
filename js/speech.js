@@ -53,8 +53,8 @@ const Speech = (() => {
   // クイズ問題を読む
   function speakQuestion(text) { speak(text, { rate: 0.8 }); }
 
-  // 正解を読む
-  function speakCorrect() { speak('せいかい！すごいね！', { pitch: 1.3, rate: 1.0 }); }
+  // 正解を読む（音声読み上げをやめて、レベルアップ音を鳴らす）
+  function speakCorrect() { playSuccessSound(); }
 
   // 不正解を読む
   function speakWrong() { speak('おしい！もう一度チャレンジしよう！', { pitch: 1.1 }); }
@@ -62,20 +62,20 @@ const Speech = (() => {
   // ヒントを読む
   function speakHint(text) { speak(`ヒント！${text}`, { rate: 0.8 }); }
 
-  // 正解効果音（Web Audio APIによるファンファーレ風サウンド）
+  // 正解効果音（Web Audio APIによるレベルアップ風サウンド）
   function playSuccessSound() {
     if (!enabled) return;
     try {
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
       if (!AudioCtx) return;
       const ctx = new AudioCtx();
-      const playTone = (freq, startTime, duration) => {
+      const playTone = (freq, startTime, duration, type='square') => {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
-        osc.type = 'sine';
+        osc.type = type;
         osc.frequency.setValueAtTime(freq, startTime);
         gain.gain.setValueAtTime(0, startTime);
-        gain.gain.linearRampToValueAtTime(0.2, startTime + 0.05);
+        gain.gain.linearRampToValueAtTime(0.15, startTime + 0.02);
         gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
         osc.connect(gain);
         gain.connect(ctx.destination);
@@ -84,11 +84,13 @@ const Speech = (() => {
       };
       
       const now = ctx.currentTime;
-      // キラキラッとした和音のアルペジオ（ド・ミ・ソ・高いド）
-      playTone(523.25, now, 0.4);       // C5
-      playTone(659.25, now + 0.1, 0.4); // E5
-      playTone(783.99, now + 0.2, 0.4); // G5
-      playTone(1046.50, now + 0.3, 0.8); // C6
+      // レベルアップ風の軽快なアルペジオ
+      playTone(523.25, now, 0.1);         // C5
+      playTone(659.25, now + 0.1, 0.1);   // E5
+      playTone(783.99, now + 0.2, 0.1);   // G5
+      playTone(1046.50, now + 0.3, 0.1);  // C6
+      playTone(1318.51, now + 0.4, 0.1);  // E6
+      playTone(1567.98, now + 0.5, 0.6);  // G6 (長く伸ばす)
     } catch (e) { console.warn('AudioContext error:', e); }
   }
 

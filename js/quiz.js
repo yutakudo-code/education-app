@@ -19,10 +19,22 @@ const Quiz = (() => {
     failCount = 0;
     onComplete = completeCb;
 
-    if (isHardMode) {
-      document.getElementById('step1-pref-display').textContent = '？？？';
+    const isWorld = pref.region === 'world';
+
+    const speechBubble = document.querySelector('.speech-bubble');
+    if (speechBubble) {
+      if (isWorld) {
+        speechBubble.innerHTML = `<strong>よみかた：</strong><span id="step1-pref-display" style="font-size:1.2em;color:#7C4DFF;font-weight:900;">？？？</span><br>この国を<strong>カタカナ</strong>で書いてみよう！📝`;
+      } else {
+        speechBubble.innerHTML = `<strong>よみかた：</strong><span id="step1-pref-display" style="font-size:1.2em;color:#7C4DFF;font-weight:900;">${isHardMode ? '？？？' : pref.reading}</span><br>この都道府県を<strong>漢字</strong>で書いてみよう！📝`;
+      }
     } else {
-      document.getElementById('step1-pref-display').textContent = pref.reading;
+      // フォールバック
+      if (isHardMode || isWorld) {
+        document.getElementById('step1-pref-display').textContent = '？？？';
+      } else {
+        document.getElementById('step1-pref-display').textContent = pref.reading;
+      }
     }
 
     // ミニマップ初期化
@@ -66,7 +78,9 @@ const Quiz = (() => {
     });
 
     // 音声で問題を読む
-    if (isHardMode) {
+    if (isWorld) {
+      Speech.speakQuestion(`地図の赤い場所はどの国かな？カタカナで書いてみよう！`);
+    } else if (isHardMode) {
       Speech.speakQuestion(`地図の赤い場所はどこかな？漢字で書いてみよう！`);
     } else {
       Speech.speakQuestion(`この都道府県の名前を漢字で書いてみよう！ヒント、読み方は「${pref.reading}」です。`);
