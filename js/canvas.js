@@ -70,10 +70,20 @@ class HandwritingCanvas {
   }
 
   _onDown(e) {
-    // マウスの右クリックなどは無視
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     
-    // そのストロークを描き始めたポインターの種類を記録（パームリジェクション用）
+    if (this.isDrawing) {
+      if (this.activePointerType === 'pen' && e.pointerType !== 'pen') {
+        // すでにペンで描画中の場合、手などが触れても無視する（完璧なパームリジェクション）
+        return;
+      }
+      if (this.activePointerType === 'touch' && e.pointerType === 'touch') {
+        // すでに手で描画中で、さらに別の指が触れた場合は無視する
+        return;
+      }
+    }
+    
+    // もし手で描画中にペンが触れたら、手の描画を中断してペンに切り替える（優先）
     this.activePointerType = e.pointerType;
     this.isDrawing = true;
 

@@ -53,6 +53,7 @@ canvas {
   -webkit-user-select: none;
   user-select: none;
   outline: none;
+  touch-action: none;
 }
 button { cursor: pointer; border: none; outline: none; font-family: var(--font-round); }
 input  { font-family: var(--font-round); outline: none; }
