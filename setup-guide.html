@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vision APIキーの取得方法 📘</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --purple: #7C4DFF;
+      --pink: #FF6B9D;
+      --green: #6BCB77;
+      --yellow: #FFD93D;
+      --card: #ffffff;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'M PLUS Rounded 1c', sans-serif;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      min-height: 100vh; padding: 20px;
+    }
+    .guide-wrap { max-width: 700px; margin: 0 auto; }
+    .guide-header {
+      background: white; border-radius: 24px; padding: 24px;
+      text-align: center; margin-bottom: 20px; box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+    }
+    .guide-header h1 { font-size: 1.6rem; color: var(--purple); margin-top: 8px; }
+    .guide-header p  { color: #888; margin-top: 6px; font-size: 0.9rem; }
+    .step-card {
+      background: white; border-radius: 20px; padding: 20px 22px;
+      margin-bottom: 14px; box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+    }
+    .step-num {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 36px; height: 36px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--purple), var(--pink));
+      color: white; font-weight: 900; font-size: 1rem; margin-bottom: 10px;
+    }
+    .step-card h2 { font-size: 1.1rem; color: #333; margin-bottom: 8px; }
+    .step-card p  { font-size: 0.88rem; color: #555; line-height: 1.7; }
+    .step-card a  { color: var(--purple); font-weight: 700; }
+    .note {
+      background: #fff9db; border: 2px solid var(--yellow);
+      border-radius: 14px; padding: 14px 16px; margin-top: 10px;
+      font-size: 0.85rem; line-height: 1.6; color: #664d03;
+    }
+    .note strong { display: block; margin-bottom: 4px; font-size: 1rem; }
+    .warning {
+      background: #fff3cd; border: 2px solid #ffc107;
+      border-radius: 14px; padding: 14px 16px; margin-top: 10px;
+      font-size: 0.85rem; color: #856404;
+    }
+    .code-box {
+      background: #f4f0ff; border: 1px solid #d0c8ff;
+      border-radius: 10px; padding: 10px 14px;
+      font-family: monospace; font-size: 0.85rem; color: #333; margin-top: 8px;
+      word-break: break-all;
+    }
+    .ok-badge {
+      display: inline-block; background: var(--green); color: white;
+      border-radius: 20px; padding: 3px 10px; font-size: 0.78rem; font-weight: 700;
+    }
+    .back-btn {
+      display: block; width: 100%; padding: 14px;
+      background: linear-gradient(135deg, var(--purple), var(--pink));
+      color: white; border: none; border-radius: 20px;
+      font-size: 1rem; font-weight: 900; cursor: pointer; text-align: center;
+      margin-top: 20px; text-decoration: none;
+      box-shadow: 0 6px 20px rgba(124,77,255,0.35);
+    }
+    @media (max-width: 480px) {
+      body { padding: 12px; }
+      .guide-header h1 { font-size: 1.3rem; }
+    }
+  </style>
+</head>
+<body>
+<div class="guide-wrap">
+
+  <div class="guide-header">
+    <div style="font-size:3rem;">🔑</div>
+    <h1>Google Vision APIキーの取得方法</h1>
+    <p>手書き文字を自動判定するために必要です。<br>無料でできます！（月1000回まで）</p>
+  </div>
+
+  <!-- STEP 1 -->
+  <div class="step-card">
+    <div class="step-num">1</div>
+    <h2>Google Cloudにアクセスしてアカウントを作成する</h2>
+    <p>
+      まず、Googleアカウント（Gmailなど）でログインします。<br>
+      👉 <a href="https://console.cloud.google.com/" target="_blank">https://console.cloud.google.com/</a> を開く<br><br>
+      初めての場合は「無料で開始」ボタンをクリックして、クレジットカードを登録します。
+    </p>
+    <div class="note">
+      <strong>💳 クレジットカードは必要？</strong>
+      登録は必要ですが、このアプリで使う「Vision API」は<strong>毎月1000回まで無料</strong>です！
+      練習で使う分には料金はかかりません。
+    </div>
+  </div>
+
+  <!-- STEP 2 -->
+  <div class="step-card">
+    <div class="step-num">2</div>
+    <h2>新しいプロジェクトを作成する</h2>
+    <p>
+      1. 画面上部の「プロジェクトを選択」をクリック<br>
+      2. 「新しいプロジェクト」をクリック<br>
+      3. プロジェクト名を入力（例：<strong>pref-app</strong>）して「作成」<br>
+    </p>
+    <div class="code-box">プロジェクト名の例: pref-study-app</div>
+  </div>
+
+  <!-- STEP 3 -->
+  <div class="step-card">
+    <div class="step-num">3</div>
+    <h2>Cloud Vision API を有効にする</h2>
+    <p>
+      1. 左上のメニュー（☰）から「APIとサービス」→「ライブラリ」をクリック<br>
+      2. 検索ボックスに「<strong>Cloud Vision API</strong>」と入力<br>
+      3. 「Cloud Vision API」をクリックして「有効にする」ボタンをクリック<br>
+    </p>
+    <div class="note">
+      ✅ <strong>有効にする</strong>を押すと、数秒後に <span class="ok-badge">有効</span> と表示されます。
+    </div>
+  </div>
+
+  <!-- STEP 4 -->
+  <div class="step-card">
+    <div class="step-num">4</div>
+    <h2>APIキーを作成する</h2>
+    <p>
+      1. 左上のメニューから「APIとサービス」→「認証情報」をクリック<br>
+      2. 画面上部の「＋ 認証情報を作成」→「APIキー」をクリック<br>
+      3. しばらくするとAPIキーが表示されます（<code>AIza...</code>で始まる文字列）<br>
+      4. コピーボタンをクリックしてコピーする<br>
+    </p>
+    <div class="code-box">例: AIzaSyBxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</div>
+    <div class="warning">
+      ⚠️ <strong>APIキーはひみつ情報です！</strong><br>
+      他の人に教えたり、SNSに載せたりしないようにしてください。
+    </div>
+  </div>
+
+  <!-- STEP 5 -->
+  <div class="step-card">
+    <div class="step-num">5</div>
+    <h2>APIキーの利用制限を設定する（おすすめ）</h2>
+    <p>
+      安全のために、APIキーが使えるサービスを制限しましょう。<br><br>
+      1. 作成したAPIキーの「編集」をクリック<br>
+      2. 「APIの制限」で「キーを制限する」を選択<br>
+      3. リストから「<strong>Cloud Vision API</strong>」を選んで保存<br>
+    </p>
+    <div class="note">
+      💡 こうすることで、もしキーが漏れても Vision API 以外には使えなくなります。
+    </div>
+  </div>
+
+  <!-- STEP 6 -->
+  <div class="step-card">
+    <div class="step-num">6</div>
+    <h2>アプリにAPIキーを入力する</h2>
+    <p>
+      アプリの手書き判定を使おうとすると「APIキー設定」ダイアログが表示されます。<br>
+      そこにコピーしたキーを貼り付けて「保存する」をクリックしてください。<br><br>
+      これで手書き文字の自動判定が使えるようになります！🎉
+    </p>
+    <div class="note">
+      <strong>⚙️ config.js で直接設定する方法</strong><br>
+      アプリフォルダの <code>config.js</code> を開いて、<br>
+      <code>VISION_API_KEY: ''</code> の部分に直接キーを入力することもできます。<br>
+      例：<code>VISION_API_KEY: 'AIzaSy...'</code>
+    </div>
+  </div>
+
+  <!-- 料金について -->
+  <div class="step-card">
+    <div style="font-size:2rem;margin-bottom:8px;">💰</div>
+    <h2>料金について</h2>
+    <p>
+      Cloud Vision API の料金（2024年現在）：<br><br>
+      ・月 <strong>1,000回まで無料</strong>（無料枠）<br>
+      ・1,001回〜 : 1,000回あたり約1.5ドル（約230円）<br><br>
+      お子さまの学習用途では、1日10〜20回使っても月300〜600回程度。<strong>無料枠で十分</strong>です！<br><br>
+      心配な場合は、Google Cloud のコンソールで「予算アラート」を設定しておきましょう。
+    </p>
+  </div>
+
+  <a href="index.html" class="back-btn">◀ アプリにもどる</a>
+
+  <div style="height:30px;"></div>
+</div>
+</body>
+</html>

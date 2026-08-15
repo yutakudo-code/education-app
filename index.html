@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>まなぼう！47都道府県 🗾</title>
+  <meta name="description" content="小学生向け47都道府県学習アプリ。手書きで漢字・県庁所在地・名産品・歴史を楽しく学ぼう！">
+
+  <!-- スタイル -->
+  <link rel="stylesheet" href="css/style.css?v=2">
+
+  <!-- 外部ライブラリ（CDN） -->
+  <!-- D3.js -->
+  <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+  <!-- TopoJSON -->
+  <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
+</head>
+
+<body>
+
+<!-- ============================================================
+     ヘッダー（ログイン後に表示）
+     ============================================================ -->
+<header id="app-header" class="hidden">
+  <div class="header-inner">
+    <button id="back-btn" class="icon-btn hidden" title="もどる">◀</button>
+      <div class="user-info">
+        <span id="current-user-name"></span>
+        <button id="btn-switch-user" class="text-button">👤 きりかえ</button>
+      </div>
+      <div class="header-actions">
+        <!-- 日本 / 世界 切り替えトグル（準備） -->
+        <div class="map-toggle-group">
+          <button id="btn-map-japan" class="toggle-btn active">🗾 日本</button>
+          <button id="btn-map-world" class="toggle-btn">🌍 世界</button>
+        </div>
+        <button id="btn-badges" class="secondary-button" style="margin-right: 8px;">👑 称号</button>
+        <button id="btn-timeattack" class="primary-button" style="margin-right: 8px;">⏱️ タイムアタック</button>
+        <button id="btn-random-challenge" class="primary-button">🎲 ランダムテスト</button>
+      </div>
+    <div class="header-stats">
+      <span id="progress-badge">⭐ 0/47</span>
+      <button id="sound-toggle-btn" title="音声ON/OFF" aria-label="音声切替">🔊</button>
+      <button id="dashboard-btn" title="ダッシュボード" aria-label="ダッシュボードを開く">📊</button>
+      <button id="switch-user-btn" title="ユーザー切替" aria-label="プロフィール切替">👤</button>
+    </div>
+  </div>
+</header>
+
+<!-- ============================================================
+     VIEW: ログイン画面
+     ============================================================ -->
+<div id="view-login" class="hidden">
+  <div class="login-box">
+    <div class="login-mascot">🦊</div>
+    <h1 class="login-title">まなぼう！47都道府県</h1>
+    <p class="login-sub">だれが学ぶ？ えらんでね！</p>
+
+    <div id="profile-list"></div>
+
+    <!-- プロフィール追加フォーム -->
+    <div id="add-profile-form" class="hidden">
+      <h4>✨ あたらしいプロフィールをつくろう！</h4>
+      <input type="text" id="profile-name-input" placeholder="なまえをいれてね（10文字まで）" maxlength="10">
+      <div class="avatar-grid-label">🐾 キャラクターをえらぼう</div>
+      <div id="avatar-grid"></div>
+      <div class="color-grid-label">🎨 カラーをえらぼう</div>
+      <div id="color-grid"></div>
+      <div class="form-buttons">
+        <button id="create-profile-btn">✅ つくる！</button>
+        <button id="cancel-profile-btn">もどる</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     VIEW: ホーム（日本地図）
+     ============================================================ -->
+<div id="view-home" class="view hidden">
+  <div class="home-layout">
+
+    <!-- 地図エリア -->
+    <div id="map-container">
+      <!-- 地方タブ -->
+      <div id="region-tabs" role="tablist" aria-label="地方フィルタ">
+        <button class="region-tab active" data-region="all" role="tab">すべて</button>
+        <button class="region-tab" data-region="北海道" role="tab">北海道</button>
+        <button class="region-tab" data-region="東北" role="tab">東北</button>
+        <button class="region-tab" data-region="関東" role="tab">関東</button>
+        <button class="region-tab" data-region="中部" role="tab">中部</button>
+        <button class="region-tab" data-region="近畿" role="tab">近畿</button>
+        <button class="region-tab" data-region="中国" role="tab">中国</button>
+        <button class="region-tab" data-region="四国" role="tab">四国</button>
+        <button class="region-tab" data-region="九州" role="tab">九州</button>
+      </div>
+
+      <!-- 地図 -->
+      <svg id="japan-map" aria-label="日本地図"></svg>
+      <div id="map-tooltip" class="hidden" aria-hidden="true"></div>
+
+      <!-- 地図の凡例 -->
+      <div style="position:absolute;bottom:12px;left:12px;background:rgba(255,255,255,0.9);border-radius:12px;padding:8px 12px;font-size:0.72rem;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+        <span style="color:#e8e4f0">■</span> 未挑戦 &nbsp;
+        <span style="color:#FFD93D">■</span> Step1 &nbsp;
+        <span style="color:#5DADE2">■</span> Step2 &nbsp;
+        <span style="color:#6BCB77">■</span> Step3
+      </div>
+
+      <!-- ランダムテストボタン -->
+      <button id="open-random-modal-btn" class="random-float-btn" aria-label="ランダムテストを開始">
+        🎲 ランダムテスト
+      </button>
+    </div>
+
+    <!-- 都道府県情報パネル -->
+    <div id="pref-panel" class="hidden" role="complementary" aria-label="都道府県詳細">
+      <div class="pref-panel-inner" style="position:relative;">
+        <button id="panel-close-btn" class="close-btn" aria-label="パネルを閉じる">✕</button>
+
+        <div class="pref-header" style="display:flex; align-items:center;">
+          <span id="pref-emoji" class="pref-emoji"></span>
+          <div class="pref-title-area" style="flex:1;">
+            <div id="pref-name"></div>
+            <div id="pref-reading"></div>
+          </div>
+          <button id="pref-reset-btn" class="icon-btn" style="width:36px; height:36px; font-size:1.2rem; background:rgba(0,0,0,0.05); color:#666;" title="この県の記録をやり直す" aria-label="リセット">🔄</button>
+        </div>
+
+        <!-- ステップ進捗バー -->
+        <div class="pref-progress-bar" role="progressbar" aria-label="学習ステップ">
+          <div class="step-indicator" id="step-ind-1">
+            <div class="step-circle">✍️</div>
+            <span>Step1 漢字</span>
+          </div>
+          <div class="step-connector"></div>
+          <div class="step-indicator" id="step-ind-2">
+            <div class="step-circle">🏛️</div>
+            <span>Step2 県庁</span>
+          </div>
+          <div class="step-connector"></div>
+          <div class="step-indicator" id="step-ind-3">
+            <div class="step-circle">📚</div>
+            <span>Step3 知識</span>
+          </div>
+        </div>
+
+        <!-- ステップ選択ボタン -->
+        <div class="step-buttons">
+          <button id="start-step1-btn" class="step-btn step-btn-1" aria-label="Step1 漢字書き取りを開始">
+            <span class="step-btn-icon">✍️</span>
+            <div class="step-btn-text">
+              <strong>Step 1：漢字で書こう！</strong>
+              <span>都道府県の名前を手書きで書く</span>
+            </div>
+          </button>
+          <button id="start-step2-btn" class="step-btn step-btn-2" aria-label="Step2 県庁所在地を開始">
+            <span class="step-btn-icon">🏛️</span>
+            <div class="step-btn-text">
+              <strong>Step 2：県庁所在地を覚えよう！</strong>
+              <span>どの市が県庁所在地かな？</span>
+            </div>
+          </button>
+          <button id="start-step3-btn" class="step-btn step-btn-3" aria-label="Step3 詳しく学ぶを開始">
+            <span class="step-btn-icon">📚</span>
+            <div class="step-btn-text">
+              <strong>Step 3：名産品・歴史を知ろう！</strong>
+              <span>その県のいろいろな知識を学ぶ</span>
+            </div>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     VIEW: Step 1 - 漢字書き取り
+     ============================================================ -->
+<div id="view-step1" class="view hidden">
+  <div class="step-layout">
+
+    <!-- ミニマップ（県の位置表示） -->
+    <div class="step-mini-map-area" aria-label="日本地図での位置">
+      <svg id="mini-map-step1" aria-label="都道府県の位置"></svg>
+    </div>
+
+    <!-- メインコンテンツ -->
+    <div class="step-content">
+
+      <!-- マスコット吹き出し -->
+      <div class="mascot-speech">
+        <span class="mascot-big">🦊</span>
+        <div class="speech-bubble">
+          <strong>よみかた：</strong><span id="step1-pref-display" style="font-size:1.2em;color:#7C4DFF;font-weight:900;"></span>
+          <br>この都道府県を<strong>漢字</strong>で書いてみよう！📝
+        </div>
+      </div>
+
+      <!-- 手書きキャンバス -->
+      <div class="canvas-area" style="position:relative;">
+        <canvas id="writing-canvas" aria-label="手書き入力エリア"></canvas>
+        <div class="canvas-tools">
+          <div class="pen-size-slider">
+            <label title="ペンの太さ">✏️</label>
+            <input type="range" id="pen-size" min="4" max="28" value="14" aria-label="ペンの太さ">
+          </div>
+          <button id="canvas-undo-btn" class="tool-btn" title="1つもどす" aria-label="もとに戻す">↩️</button>
+          <button id="canvas-clear-btn" class="tool-btn" title="全部けす" aria-label="クリア">🗑️</button>
+        </div>
+      </div>
+
+      <!-- 判定・ヒントボタン -->
+      <div class="judge-area">
+        <button id="judge-btn" class="judge-btn">
+          🔍 判定する！
+        </button>
+        <button id="show-hint-btn" class="hint-btn hidden">💡 ヒント</button>
+        <button id="show-answer-btn" class="answer-btn hidden">📖 答えを見る</button>
+      </div>
+
+      <!-- 結果表示 -->
+      <div id="step1-result" class="result-area hidden" role="alert" aria-live="polite"></div>
+      <div id="step1-hint" class="hint-area hidden"></div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     VIEW: Step 2 - 県庁所在地
+     ============================================================ -->
+<div id="view-step2" class="view hidden">
+  <div class="step-layout">
+
+    <!-- ミニマップ -->
+    <div class="step-mini-map-area" aria-label="都道府県の位置">
+      <svg id="mini-map-step2"></svg>
+    </div>
+
+    <!-- メインコンテンツ -->
+    <div class="step-content">
+
+      <!-- 問題 -->
+      <div class="mascot-speech">
+        <span class="mascot-big">🦊</span>
+        <div class="speech-bubble">
+          <strong><span id="step2-pref-name"></span></strong>の<strong>県庁所在地</strong>（けんちょうしょざいち）はどこかな？🏛️
+          <br><small style="color:#999">※県庁所在地 = 都道府県の「中心の都市」のこと</small>
+        </div>
+      </div>
+
+      <!-- モード切替 -->
+      <div class="mode-toggle">
+        <button id="mode-write-btn" class="mode-btn active" aria-label="書き取りモード">✍️ 書いて答える</button>
+        <button id="mode-choice-btn" class="mode-btn" aria-label="選択肢モード">👆 えらんで答える</button>
+      </div>
+
+      <!-- 書き取りモード -->
+      <div id="step2-write-mode">
+        <div class="canvas-area" style="position:relative;">
+          <canvas id="writing-canvas-2" aria-label="手書き入力エリア"></canvas>
+          <div class="canvas-tools">
+            <div class="pen-size-slider">
+              <label>✏️</label>
+              <input type="range" id="pen-size-2" min="4" max="28" value="14" aria-label="ペンの太さ">
+            </div>
+            <button id="canvas2-undo-btn" class="tool-btn" title="もどす" aria-label="もとに戻す">↩️</button>
+            <button id="canvas2-clear-btn" class="tool-btn" title="けす" aria-label="クリア">🗑️</button>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <button id="judge-btn-2" class="judge-btn">🔍 判定する！</button>
+        </div>
+      </div>
+
+      <!-- 選択肢モード -->
+      <div id="step2-choice-mode" class="hidden">
+        <div id="step2-choices" class="choices-grid" role="group" aria-label="県庁所在地の選択肢"></div>
+      </div>
+
+      <!-- 結果 -->
+      <div id="step2-result" class="result-area hidden" role="alert" aria-live="polite"></div>
+
+      <!-- 正解後：県庁所在地の情報 -->
+      <div id="step2-capital-info" class="capital-info hidden">
+        <div class="info-card">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+            <span style="font-size:1.8rem;">🏛️</span>
+            <div>
+              <div id="step2-capital-name" style="font-size:1.3rem;font-weight:900;color:#155724;"></div>
+              <div id="step2-capital-desc" style="font-size:0.82rem;color:#2d6a4f;margin-top:2px;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     VIEW: Step 3 - 名産品・歴史・観光
+     ============================================================ -->
+<div id="view-step3" class="view hidden">
+  <div class="step3-layout">
+
+    <!-- ヘッダー -->
+    <div class="step3-header">
+      <span class="mascot-small">🦊</span>
+      <h2 id="step3-pref-title">都道府県</h2>
+      <span id="step3-pref-emoji" style="font-size:2rem;"></span>
+    </div>
+
+    <!-- タブ -->
+    <div class="content-tabs" role="tablist">
+      <button class="content-tab active" data-tab="products" role="tab" aria-selected="true">🛍️ 名産品</button>
+      <button class="content-tab" data-tab="history" role="tab" aria-selected="false">📜 歴史</button>
+      <button class="content-tab" data-tab="sightseeing" role="tab" aria-selected="false">🗺️ 観光</button>
+      <button class="content-tab" data-tab="quiz" role="tab" aria-selected="false">🧩 クイズ</button>
+    </div>
+
+    <!-- 名産品タブ -->
+    <div id="tab-products" class="tab-content" role="tabpanel">
+      <div id="products-cards" class="cards-grid"></div>
+    </div>
+
+    <!-- 歴史タブ -->
+    <div id="tab-history" class="tab-content hidden" role="tabpanel">
+      <div id="history-timeline"></div>
+    </div>
+
+    <!-- 観光タブ -->
+    <div id="tab-sightseeing" class="tab-content hidden" role="tabpanel">
+      <div id="sightseeing-list"></div>
+      <div id="fun-fact"></div>
+    </div>
+
+    <!-- クイズタブ -->
+    <div id="tab-quiz" class="tab-content hidden" role="tabpanel">
+      <div id="step3-quiz-container" class="quiz-container"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ============================================================
+     VIEW: ダッシュボード
+     ============================================================ -->
+<div id="view-dashboard" class="view hidden">
+  <div class="dashboard-layout">
+
+    <!-- ランダムテスト・タイムアタック用ヘッダー（通常は非表示） -->
+    <div id="challenge-header" class="hidden">
+      <div class="challenge-status">
+        <span id="challenge-counter">1 / 10</span>
+        <span id="challenge-timer" class="hidden">⏱️ 00:00.0</span>
+      </div>
+      <h2 id="challenge-question">??? はどこ？</h2>
+      <button id="btn-cancel-challenge" class="secondary-button">やめる</button>
+    </div>
+
+    <!-- ランダムテスト結果モーダル -->
+    <div id="random-result-modal" class="modal hidden">
+      <div class="modal-content">
+        <h2 id="random-result-title">テストクリア！ 🎉</h2>
+        <p id="random-result-desc">よくがんばりました！</p>
+        <p id="random-result-time" class="hidden" style="font-size: 1.5rem; font-weight: bold; color: #e67e22;"></p>
+        <button id="btn-close-random-result" class="primary-button">もどる</button>
+      </div>
+    </div>
+
+    <!-- 称号（バッジ）モーダル -->
+    <div id="badge-modal" class="modal hidden">
+      <div class="modal-content" style="max-width: 600px;">
+        <h2>👑 あなたの称号</h2>
+        <div id="badge-list" class="badge-grid">
+          <!-- バッジがJSで動的に追加されます -->
+        </div>
+        <button id="btn-close-badges" class="primary-button" style="margin-top: 20px;">とじる</button>
+      </div>
+    </div>
+
+    <!-- プロフィールヘッダー -->
+    <div class="dash-profile-header">
+      <span id="dash-profile-avatar" class="dash-avatar">🦊</span>
+      <div>
+        <div id="dash-profile-name" class="dash-name">まなびちゃん</div>
+        <div class="dash-sub">📅 がんばって学習中！</div>
+      </div>
+      <button id="back-from-dash-btn" class="dash-back-btn">◀ もどる</button>
+    </div>
+
+    <!-- サマリー統計 -->
+    <div class="dash-section">
+      <div class="dash-section-title">📊 学習まとめ</div>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div id="dash-completed1" class="stat-value">0/47</div>
+          <div class="stat-label">✍️ Step1 クリア</div>
+        </div>
+        <div class="stat-card">
+          <div id="dash-completed2" class="stat-value">0/47</div>
+          <div class="stat-label">🏛️ Step2 クリア</div>
+        </div>
+        <div class="stat-card">
+          <div id="dash-completed3" class="stat-value">0/47</div>
+          <div class="stat-label">📚 Step3 クリア</div>
+        </div>
+      </div>
+      <div class="stats-grid" style="margin-top:8px;">
+        <div class="stat-card">
+          <div id="dash-accuracy" class="stat-value">0%</div>
+          <div class="stat-label">🎯 平均正答率</div>
+        </div>
+        <div class="stat-card">
+          <div id="dash-streak" class="stat-value">0日</div>
+          <div class="stat-label">🔥 連続学習</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 進捗リング -->
+    <div class="dash-section">
+      <div class="dash-section-title">⭕ ステップ達成率</div>
+      <div class="rings-row">
+        <div class="ring-item">
+          <div id="ring-step1"></div>
+          <div class="ring-label">漢字書き取り</div>
+        </div>
+        <div class="ring-item">
+          <div id="ring-step2"></div>
+          <div class="ring-label">県庁所在地</div>
+        </div>
+        <div class="ring-item">
+          <div id="ring-step3"></div>
+          <div class="ring-label">名産品・歴史</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 地方別進捗 -->
+    <div class="dash-section">
+      <div class="dash-section-title">🗾 地方別 学習進捗（Step1）</div>
+      <div id="dash-region-progress"></div>
+    </div>
+
+    <!-- 活動グラフ -->
+    <div class="dash-section">
+      <div class="dash-section-title">📅 直近7日間の学習記録</div>
+      <div id="dash-activity-chart" class="activity-chart-container"></div>
+    </div>
+
+    <!-- バッジ -->
+    <div class="dash-section">
+      <div class="dash-section-title">🏅 バッジコレクション</div>
+      <div id="dash-badges" class="badges-grid"></div>
+    </div>
+
+    <!-- 苦手都道府県 -->
+    <div class="dash-section">
+      <div class="dash-section-title">💪 もっと練習しよう！</div>
+      <div id="dash-weak-prefs"></div>
+    </div>
+
+    <!-- 全都道府県一覧 -->
+    <div class="dash-section">
+      <div class="dash-section-title">📋 全47都道府県の記録</div>
+      <div class="pref-table-wrap">
+        <table class="pref-table" aria-label="都道府県別学習記録">
+          <thead>
+            <tr>
+              <th>都道府県</th>
+              <th>Step1 ✍️</th>
+              <th>Step2 🏛️</th>
+              <th>Step3 📚</th>
+              <th>正答率</th>
+            </tr>
+          </thead>
+          <tbody id="pref-table-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 下部余白 -->
+    <div style="height: 40px;"></div>
+  </div>
+</div>
+
+<!-- ============================================================
+     オーバーレイ・モーダル
+     ============================================================ -->
+
+<!-- ローディング -->
+<div id="loading-overlay" class="overlay hidden" role="status" aria-live="polite">
+  <div class="loading-content">
+    <div class="loading-spinner">🔍</div>
+    <p>手書き文字を判定中…</p>
+  </div>
+</div>
+
+<!-- ステップクリア成功オーバーレイ -->
+<div id="success-overlay" class="overlay hidden" role="dialog" aria-modal="true" aria-label="クリア！">
+  <div class="success-content">
+    <span class="success-animation">🎉</span>
+    <h2 id="success-title">クリア！</h2>
+    <p id="success-message"></p>
+    <div style="display:flex; flex-direction:column; gap:10px; margin-top: 16px;">
+      <button id="success-continue-btn" class="success-btn">つぎへ進む ▶</button>
+      <button id="success-random-btn" class="success-btn random-next-btn hidden">🎲 次のランダム問題へ</button>
+    </div>
+  </div>
+</div>
+
+<!-- APIキー設定モーダル -->
+<div id="api-setup-modal" class="modal hidden" role="dialog" aria-modal="true" aria-label="APIキー設定">
+  <div class="modal-inner">
+    <h2>🔑 APIキーの設定</h2>
+    <p>
+      手書き文字の自動判定には <strong>Google Cloud Vision API</strong> のキーが必要です。<br>
+      <small>（一度設定するとずっと使えます！）</small>
+    </p>
+    <input type="text" id="api-key-input" placeholder="AIza..." aria-label="Vision APIキーを入力">
+    <p style="font-size:0.78rem;color:#999;margin-bottom:10px;">
+      📌 APIキーの取得方法は
+      <a href="setup-guide.html" target="_blank" style="color:#7C4DFF;font-weight:700;">こちら</a>
+      を見てください
+    </p>
+    <div class="modal-buttons">
+      <button id="save-api-key-btn" class="primary-btn">✅ 保存する</button>
+      <button id="skip-api-key-btn" class="secondary-btn">あとで設定する</button>
+    </div>
+  </div>
+</div>
+
+<!-- ランダムテスト選択モーダル -->
+<div id="random-setup-modal" class="modal hidden" role="dialog" aria-modal="true" aria-label="ランダムテスト">
+  <div class="modal-inner">
+    <div style="font-size:3rem; animation: bounce 2s infinite;">🎲</div>
+    <h2>ランダムテスト</h2>
+    <p>どのテストに挑戦する？</p>
+    <div style="display:flex; flex-direction:column; gap:10px; margin-bottom: 20px;">
+      <button class="step-btn step-btn-1" id="btn-rand-step1" style="justify-content:center; text-align:center;">✍️ Step 1：漢字</button>
+      <button class="step-btn step-btn-2" id="btn-rand-step2" style="justify-content:center; text-align:center;">🏛️ Step 2：県庁</button>
+      <button class="step-btn step-btn-3" id="btn-rand-step3" style="justify-content:center; text-align:center;">📚 Step 3：知識</button>
+    </div>
+    <button id="close-random-modal-btn" class="secondary-btn" style="width:100%;">やめる</button>
+  </div>
+</div>
+
+<!-- コンフェッティキャンバス -->
+<canvas id="confetti-canvas" aria-hidden="true"></canvas>
+
+<!-- ============================================================
+     JavaScript（順序が重要！）
+     ============================================================ -->
+<!-- 設定 -->
+<script src="config.js"></script>
+<!-- データ -->
+<script src="data/prefectures.js"></script>
+<script src="data/countries.js"></script>
+<!-- ユーティリティ -->
+<script src="js/progress.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/speech.js"></script>
+<!-- キャンバス・OCR -->
+<script src="js/canvas.js"></script>
+<script src="js/ocr.js"></script>
+<!-- 地図 -->
+<script src="js/map.js"></script>
+<script src="js/world_map.js"></script>
+<!-- 学習ロジック -->
+<script src="js/quiz.js"></script>
+<script src="js/content.js"></script>
+<!-- ダッシュボード -->
+<script src="js/dashboard.js"></script>
+<!-- メインアプリ（最後に読み込む） -->
+<script src="js/app.js?v=2"></script>
+
+</body>
+</html>
