@@ -26,24 +26,18 @@
 <header id="app-header" class="hidden">
   <div class="header-inner">
     <button id="back-btn" class="icon-btn hidden" title="もどる">◀</button>
-    <div class="header-title">
-      <span class="mascot">🦊</span>
+    
+    <!-- 左側：ロゴとタイトル -->
+    <div class="header-logo" id="header-logo-btn" style="cursor: pointer;" title="ポータル画面へ戻る">
+      <span class="mascot">🏠</span>
       <span id="header-title-text">まなぼう！47都道府県</span>
     </div>
+
+    <!-- 右側：設定やダッシュボード -->
     <div class="user-info">
       <span id="current-user-name"></span>
-        <button id="btn-switch-user" class="text-button">👤 きりかえ</button>
-      </div>
-      <div class="header-actions">
-        <!-- 日本 / 世界 切り替えトグル（準備） -->
-        <div class="map-toggle-group">
-          <button id="btn-map-japan" class="toggle-btn active">🗾 日本</button>
-          <button id="btn-map-world" class="toggle-btn">🌍 世界</button>
-        </div>
-        <button id="btn-badges" class="secondary-button" style="margin-right: 8px;">👑 称号</button>
-        <button id="btn-timeattack" class="primary-button" style="margin-right: 8px;">⏱️ タイムアタック</button>
-        <button id="btn-random-challenge" class="primary-button">🎲 ランダムテスト</button>
-      </div>
+    </div>
+    
     <div class="header-stats">
       <span id="progress-badge">⭐ 0/47</span>
       <button id="sound-toggle-btn" title="音声ON/OFF" aria-label="音声切替">🔊</button>
@@ -76,6 +70,52 @@
         <button id="create-profile-btn">✅ つくる！</button>
         <button id="cancel-profile-btn">もどる</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     VIEW: ポータル画面（メインメニュー）
+     ============================================================ -->
+<div id="view-portal" class="view hidden">
+  <div class="portal-layout">
+    <div class="portal-header">
+      <h1 class="portal-title">どれであそぶ？</h1>
+      <p class="portal-subtitle">すきなモードをえらんでね！</p>
+    </div>
+
+    <!-- 日本 / 世界 切り替えトグル（ポータル専用） -->
+    <div class="portal-toggle-container">
+      <div class="portal-toggle-group">
+        <button id="portal-map-japan" class="portal-toggle-btn active">🗾 日本</button>
+        <button id="portal-map-world" class="portal-toggle-btn">🌍 世界</button>
+      </div>
+    </div>
+
+    <div class="portal-menu-grid">
+      <button id="portal-btn-map" class="portal-menu-btn" style="background: linear-gradient(135deg, #A8E6CF, #3DCCC7);">
+        <div class="portal-menu-icon">🗺️</div>
+        <div class="portal-menu-text">地図からえらぶ</div>
+        <div class="portal-menu-sub">すきな場所を選んで学ぶ</div>
+      </button>
+
+      <button id="portal-btn-random" class="portal-menu-btn" style="background: linear-gradient(135deg, #FFD3B6, #FFAAA5);">
+        <div class="portal-menu-icon">🎲</div>
+        <div class="portal-menu-text">ランダムテスト</div>
+        <div class="portal-menu-sub">サクッと1問クイズ！</div>
+      </button>
+
+      <button id="portal-btn-challenge" class="portal-menu-btn" style="background: linear-gradient(135deg, #FF9A9E, #FECFEF);">
+        <div class="portal-menu-icon">🏆</div>
+        <div class="portal-menu-text">チャレンジ</div>
+        <div class="portal-menu-sub">タイムアタックや全国一周！</div>
+      </button>
+
+      <button id="portal-btn-dashboard" class="portal-menu-btn" style="background: linear-gradient(135deg, #A1C4FD, #C2E9FB);">
+        <div class="portal-menu-icon">👑</div>
+        <div class="portal-menu-text">きろくと称号</div>
+        <div class="portal-menu-sub">集めたバッジを見る</div>
+      </button>
     </div>
   </div>
 </div>
@@ -350,31 +390,54 @@
   </div>
 </div>
 
+  </div>
+</div>
+
+<!-- ============================================================
+     チャレンジ用UI要素 (Global)
+     ============================================================ -->
+<!-- チャレンジ用ヘッダー（通常は非表示） -->
+<div id="challenge-header" class="hidden">
+  <div class="challenge-status">
+    <span id="challenge-counter">1 / 10</span>
+    <span id="challenge-timer" class="hidden">⏱️ 00:00.0</span>
+  </div>
+  <h2 id="challenge-question">??? はどこ？</h2>
+  <button id="btn-cancel-challenge" class="secondary-button">やめる</button>
+</div>
+
+<!-- ランダム/チャレンジ結果モーダル -->
+<div id="random-result-modal" class="modal hidden">
+  <div class="modal-content">
+    <h2 id="random-result-title">テストクリア！ 🎉</h2>
+    <p id="random-result-desc">よくがんばりました！</p>
+    <p id="random-result-time" class="hidden" style="font-size: 1.5rem; font-weight: bold; color: #e67e22;"></p>
+    <button id="btn-close-random-result" class="primary-button">もどる</button>
+  </div>
+</div>
+
+<!-- チャレンジ設定モーダル -->
+<div id="challenge-setup-modal" class="modal hidden">
+  <div class="modal-content">
+    <h2>🏆 チャレンジモード</h2>
+    <p>遊びたいモードを選んでね！</p>
+    <div style="display:flex;flex-direction:column;gap:12px;margin-top:16px;">
+      <button id="btn-chal-survival-kanji" class="primary-button">⏱️ 60秒サバイバル（漢字）</button>
+      <button id="btn-chal-survival-quiz" class="primary-button">⏱️ 60秒サバイバル（クイズ）</button>
+      <button id="btn-chal-tour-kanji" class="secondary-button">🗾 全国一周タイムトライアル（漢字）</button>
+      <button id="btn-chal-tour-quiz" class="secondary-button">🗾 全国一周タイムトライアル（クイズ）</button>
+    </div>
+    <div style="margin-top: 16px; text-align: center;">
+      <button id="close-challenge-modal-btn" class="text-button">キャンセル</button>
+    </div>
+  </div>
+</div>
+
 <!-- ============================================================
      VIEW: ダッシュボード
      ============================================================ -->
 <div id="view-dashboard" class="view hidden">
   <div class="dashboard-layout">
-
-    <!-- ランダムテスト・タイムアタック用ヘッダー（通常は非表示） -->
-    <div id="challenge-header" class="hidden">
-      <div class="challenge-status">
-        <span id="challenge-counter">1 / 10</span>
-        <span id="challenge-timer" class="hidden">⏱️ 00:00.0</span>
-      </div>
-      <h2 id="challenge-question">??? はどこ？</h2>
-      <button id="btn-cancel-challenge" class="secondary-button">やめる</button>
-    </div>
-
-    <!-- ランダムテスト結果モーダル -->
-    <div id="random-result-modal" class="modal hidden">
-      <div class="modal-content">
-        <h2 id="random-result-title">テストクリア！ 🎉</h2>
-        <p id="random-result-desc">よくがんばりました！</p>
-        <p id="random-result-time" class="hidden" style="font-size: 1.5rem; font-weight: bold; color: #e67e22;"></p>
-        <button id="btn-close-random-result" class="primary-button">もどる</button>
-      </div>
-    </div>
 
     <!-- 称号（バッジ）モーダル -->
     <div id="badge-modal" class="modal hidden">
@@ -547,6 +610,7 @@
     <p>どのテストに挑戦する？</p>
     <div style="display:flex; flex-direction:column; gap:10px; margin-bottom: 20px;">
       <button class="step-btn step-btn-1" id="btn-rand-step1" style="justify-content:center; text-align:center;">✍️ Step 1：漢字</button>
+      <button class="step-btn step-btn-1" id="btn-rand-step1-hard" style="justify-content:center; text-align:center; background: linear-gradient(135deg, #FF6B9D, #FF8E53);">😈 Step 1：漢字（ノーヒント）</button>
       <button class="step-btn step-btn-2" id="btn-rand-step2" style="justify-content:center; text-align:center;">🏛️ Step 2：県庁</button>
       <button class="step-btn step-btn-3" id="btn-rand-step3" style="justify-content:center; text-align:center;">📚 Step 3：知識</button>
     </div>

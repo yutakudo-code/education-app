@@ -38,9 +38,14 @@ document.addEventListener('DOMContentLoaded', () => {
   // ルーター（グローバルに公開）
   // ============================================================
   window.AppRouter = {
+    goPortal: () => {
+      showView('view-portal');
+      document.getElementById('header-title-text').textContent = 'まなぼう！47都道府県';
+      selectedPref = null;
+    },
     goHome: () => {
       showView('view-home');
-      document.getElementById('header-title-text').textContent = 'まなぼう！47都道府県';
+      document.getElementById('header-title-text').textContent = currentMapMode === 'japan' ? '🗾 地図からえらぶ' : '🌍 地図からえらぶ';
       if (currentMapMode === 'japan') {
         JapanMap.updateColors();
       } else {
@@ -72,13 +77,13 @@ document.addEventListener('DOMContentLoaded', () => {
         _onStepComplete(step);
       });
     },
-    goStep3: (pref) => {
+    goStep3: (pref, autoSwitchTab = 'products') => {
       selectedPref = pref;
       showView('view-step3');
       document.getElementById('header-title-text').textContent = `📚 ${pref.name}を知ろう`;
       Content.init(pref, currentUser.id, (step) => {
         _onStepComplete(step);
-      });
+      }, autoSwitchTab);
     },
     goDashboard: () => {
       showView('view-dashboard');
@@ -102,31 +107,51 @@ document.addEventListener('DOMContentLoaded', () => {
     currentUser = profile;
     document.getElementById('view-login').classList.add('hidden');
     JapanMap.setUser(profile.id);
+    document.getElementById('current-user-name').innerHTML = `<span class="user-avatar">${profile.avatar}</span> ${profile.name}`;
+    document.getElementById('app-header').classList.remove('hidden');
+    _updateHeaderStats();
     Speech.speak(`${profile.name}さん、こんにちは！今日もがんばろう！`);
-    window.AppRouter.goHome();
+    window.AppRouter.goPortal(); // ログイン後はポータルへ
   }
 
   // ============================================================
-  // ホーム画面 - 地図初期化とモード切替
+  // ポータル画面・ホーム画面 - モード切替とナビゲーション
   // ============================================================
-  document.getElementById('btn-map-japan')?.addEventListener('click', () => {
+  document.getElementById('portal-map-japan')?.addEventListener('click', () => {
     if (currentMapMode === 'japan') return;
     currentMapMode = 'japan';
-    document.getElementById('btn-map-japan').classList.add('active');
-    document.getElementById('btn-map-world').classList.remove('active');
+    document.getElementById('portal-map-japan').classList.add('active');
+    document.getElementById('portal-map-world').classList.remove('active');
     document.getElementById('region-tabs').classList.remove('hidden');
-    document.getElementById('header-title-text').textContent = 'まなぼう！47都道府県';
     _initMap();
   });
 
-  document.getElementById('btn-map-world')?.addEventListener('click', () => {
+  document.getElementById('portal-map-world')?.addEventListener('click', () => {
     if (currentMapMode === 'world') return;
     currentMapMode = 'world';
-    document.getElementById('btn-map-world').classList.add('active');
-    document.getElementById('btn-map-japan').classList.remove('active');
+    document.getElementById('portal-map-world').classList.add('active');
+    document.getElementById('portal-map-japan').classList.remove('active');
     document.getElementById('region-tabs').classList.add('hidden');
-    document.getElementById('header-title-text').textContent = '🌍 世界の国々';
     _initMap();
+  });
+
+  // ポータルボタン
+  document.getElementById('portal-btn-map')?.addEventListener('click', () => {
+    window.AppRouter.goHome();
+  });
+  document.getElementById('portal-btn-random')?.addEventListener('click', () => {
+    document.getElementById('random-setup-modal').classList.remove('hidden');
+  });
+  document.getElementById('portal-btn-challenge')?.addEventListener('click', () => {
+    document.getElementById('challenge-setup-modal').classList.remove('hidden');
+  });
+  document.getElementById('portal-btn-dashboard')?.addEventListener('click', () => {
+    window.AppRouter.goDashboard();
+  });
+
+  // ヘッダーロゴクリックでポータルへ
+  document.getElementById('header-logo-btn')?.addEventListener('click', () => {
+    window.AppRouter.goPortal();
   });
 
   function _initMap() {
@@ -285,10 +310,15 @@ document.addEventListener('DOMContentLoaded', () => {
   // ステップ完了ハンドラ
   // ============================================================
   function _onStepComplete(step) {
-    if (currentRandomStep === 'timeattack') {
+    if (currentRandomStep === 'challenge') {
       Speech.playSuccessSound();
-      timeAttackCurrentIndex++;
-      nextTimeAttackQuestion();
+      challengeScore++;
+      challengeCurrentIndex++;
+      // Wait a moment so user can see "Correct!" before jumping
+      setTimeout(() => {
+        nextChallengeQuestion();
+      }, 1500);
+      return; // Skip success overlay!
     } else {
       _showSuccessOverlay(step);
     }
@@ -382,70 +412,121 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ============================================================
-  // タイムアタック機能
+  // チャレンジ機能 (サバイバル & 全国一周)
   // ============================================================
-  let timeAttackInterval = null;
-  let timeAttackStartTime = 0;
-  let timeAttackQueue = [];
-  let timeAttackCurrentIndex = 0;
-  const timeAttackTotal = 10;
+  let challengeInterval = null;
+  let challengeStartTime = 0;
+  let challengeQueue = [];
+  let challengeCurrentIndex = 0;
+  let challengeMode = ''; // 'survival' | 'tour'
+  let challengeType = ''; // 'kanji' | 'quiz'
+  let challengeScore = 0;
+  let challengeTimeRemaining = 60;
   
-  function startTimeAttack() {
+  function startChallenge(mode, type) {
+    document.getElementById('challenge-setup-modal').classList.add('hidden');
+    challengeMode = mode;
+    challengeType = type;
+    challengeScore = 0;
+    challengeTimeRemaining = 60;
+
     const targetList = currentMapMode === 'japan' ? PREFECTURES : COUNTRIES;
     const shuffled = [...targetList].sort(() => 0.5 - Math.random());
-    timeAttackQueue = shuffled.slice(0, timeAttackTotal);
-    timeAttackCurrentIndex = 0;
+    challengeQueue = shuffled;
+    challengeCurrentIndex = 0;
     
     document.getElementById('challenge-header').classList.remove('hidden');
     document.getElementById('challenge-timer').classList.remove('hidden');
     
-    timeAttackStartTime = Date.now();
-    timeAttackInterval = setInterval(() => {
-      const elapsed = Date.now() - timeAttackStartTime;
-      const secs = (elapsed / 1000).toFixed(1);
-      document.getElementById('challenge-timer').textContent = `⏱️ ${secs}秒`;
+    challengeStartTime = Date.now();
+    challengeInterval = setInterval(() => {
+      if (challengeMode === 'survival') {
+        challengeTimeRemaining -= 0.1;
+        if (challengeTimeRemaining <= 0) {
+          challengeTimeRemaining = 0;
+          document.getElementById('challenge-timer').textContent = `⏱️ 0.0秒`;
+          finishChallenge();
+        } else {
+          document.getElementById('challenge-timer').textContent = `⏱️ ${challengeTimeRemaining.toFixed(1)}秒`;
+        }
+      } else {
+        const elapsed = Date.now() - challengeStartTime;
+        document.getElementById('challenge-timer').textContent = `⏱️ ${(elapsed / 1000).toFixed(1)}秒`;
+      }
     }, 100);
     
-    nextTimeAttackQuestion();
+    nextChallengeQuestion();
   }
 
-  function nextTimeAttackQuestion() {
-    if (timeAttackCurrentIndex >= timeAttackTotal) {
-      clearInterval(timeAttackInterval);
-      const elapsed = Date.now() - timeAttackStartTime;
-      const best = Progress.recordTimeAttack(currentUser.id, elapsed);
-      document.getElementById('challenge-header').classList.add('hidden');
-      
-      const resModal = document.getElementById('random-result-modal');
-      document.getElementById('random-result-title').textContent = 'タイムアタック クリア！⚡️';
+  function finishChallenge() {
+    clearInterval(challengeInterval);
+    document.getElementById('challenge-header').classList.add('hidden');
+    
+    const resModal = document.getElementById('random-result-modal');
+    if (challengeMode === 'survival') {
+      document.getElementById('random-result-title').textContent = 'タイムアップ！⏳';
+      document.getElementById('random-result-desc').textContent = `結果: ${challengeScore}問 正解！`;
+    } else {
+      const elapsed = Date.now() - challengeStartTime;
+      const best = Progress.recordTimeAttack(currentUser.id, elapsed); // 記録保存
+      document.getElementById('random-result-title').textContent = '全国一周 クリア！🎌';
       document.getElementById('random-result-desc').textContent = `タイム: ${(elapsed / 1000).toFixed(1)}秒 (ベスト: ${(best / 1000).toFixed(1)}秒)`;
-      resModal.classList.remove('hidden');
-      
-      // 更新されたバッジデータがあれば表示
-      const newBadges = Progress.getBadges(currentUser.id);
-      return;
+    }
+    resModal.classList.remove('hidden');
+    currentRandomStep = null;
+  }
+
+  function nextChallengeQuestion() {
+    if (challengeCurrentIndex >= challengeQueue.length) {
+      if (challengeMode === 'survival') {
+        // 全問解き終わっても時間が余っていたらループする
+        challengeQueue = [...challengeQueue].sort(() => 0.5 - Math.random());
+        challengeCurrentIndex = 0;
+      } else {
+        finishChallenge();
+        return;
+      }
     }
     
-    const pref = timeAttackQueue[timeAttackCurrentIndex];
-    document.getElementById('challenge-counter').textContent = `${timeAttackCurrentIndex + 1} / ${timeAttackTotal}`;
+    const pref = challengeQueue[challengeCurrentIndex];
+    if (challengeMode === 'tour') {
+      document.getElementById('challenge-counter').textContent = `${challengeCurrentIndex + 1} / ${challengeQueue.length}`;
+    } else {
+      document.getElementById('challenge-counter').textContent = `スコア: ${challengeScore}`;
+    }
     
     const isWorld = pref.region === 'world';
-    const actionText = isWorld ? 'カタカナで！' : '漢字で！';
-    const readingText = isWorld ? 'この国' : pref.reading;
-    document.getElementById('challenge-question').textContent = `✍️ 「${readingText}」を${actionText}`;
+    currentRandomStep = 'challenge';
     
-    currentRandomStep = 'timeattack';
-    // タイムアタックでも世界モードの場合はノーヒント（地図だけ）になります
-    window.AppRouter.goStep1(pref, false);
+    if (challengeType === 'kanji') {
+      const actionText = isWorld ? 'カタカナで！' : '漢字で！';
+      const readingText = isWorld ? 'この国' : pref.reading;
+      document.getElementById('challenge-question').textContent = `✍️ 「${readingText}」を${actionText}`;
+      // 世界モードは地図のみ（ノーヒント）
+      window.AppRouter.goStep1(pref, false);
+    } else if (challengeType === 'quiz') {
+      document.getElementById('challenge-question').textContent = `🧩 クイズに答えよう！`;
+      window.AppRouter.goStep3(pref, 'quiz');
+    }
   }
 
-  document.getElementById('btn-timeattack')?.addEventListener('click', () => {
+  // チャレンジモーダル表示
+  document.getElementById('btn-challenge-modal')?.addEventListener('click', () => {
     if (!currentUser) return;
-    startTimeAttack();
+    document.getElementById('challenge-setup-modal').classList.remove('hidden');
+  });
+  document.getElementById('close-challenge-modal-btn')?.addEventListener('click', () => {
+    document.getElementById('challenge-setup-modal').classList.add('hidden');
   });
 
+  // モードごとの開始ボタン
+  document.getElementById('btn-chal-survival-kanji')?.addEventListener('click', () => startChallenge('survival', 'kanji'));
+  document.getElementById('btn-chal-survival-quiz')?.addEventListener('click', () => startChallenge('survival', 'quiz'));
+  document.getElementById('btn-chal-tour-kanji')?.addEventListener('click', () => startChallenge('tour', 'kanji'));
+  document.getElementById('btn-chal-tour-quiz')?.addEventListener('click', () => startChallenge('tour', 'quiz'));
+
   document.getElementById('btn-cancel-challenge')?.addEventListener('click', () => {
-    clearInterval(timeAttackInterval);
+    clearInterval(challengeInterval);
     document.getElementById('challenge-header').classList.add('hidden');
     currentRandomStep = null;
     window.AppRouter.goHome();

@@ -40,26 +40,16 @@ const Quiz = (() => {
     // ミニマップ初期化
     JapanMap.initMini('mini-map-step1', pref);
 
-    let autoJudgeTimer = null;
     const handleStrokeStart = () => {
-      if (autoJudgeTimer) clearTimeout(autoJudgeTimer);
       // 書き始めたら前回の「ざんねん」メッセージを消す
       document.getElementById('step1-result').classList.add('hidden');
-    };
-    
-    const handleStrokeEnd = () => {
-      if (autoJudgeTimer) clearTimeout(autoJudgeTimer);
-      autoJudgeTimer = setTimeout(() => {
-        _judgeStep1(true);
-      }, 1000); // 1秒書かなければ自動判定
     };
 
     // キャンバス初期化
     if (activeCanvas) { activeCanvas = null; }
     activeCanvas = new HandwritingCanvas('writing-canvas', { 
       penSize: 14,
-      onStrokeStart: handleStrokeStart,
-      onStrokeEnd: handleStrokeEnd
+      onStrokeStart: handleStrokeStart
     });
 
     // ツールバー
