@@ -13,13 +13,17 @@ const Quiz = (() => {
   // ============================================================
   // STEP 1: 漢字書き取りクイズ
   // ============================================================
-  function initStep1(pref, userId, completeCb) {
+  function initStep1(pref, userId, completeCb, isHardMode = false) {
     currentPref = pref;
     currentUserId = userId;
     failCount = 0;
     onComplete = completeCb;
 
-    document.getElementById('step1-pref-display').textContent = pref.reading;
+    if (isHardMode) {
+      document.getElementById('step1-pref-display').textContent = '？？？';
+    } else {
+      document.getElementById('step1-pref-display').textContent = pref.reading;
+    }
 
     // ミニマップ初期化
     JapanMap.initMini('mini-map-step1', pref);
@@ -62,7 +66,11 @@ const Quiz = (() => {
     });
 
     // 音声で問題を読む
-    Speech.speakQuestion(`この都道府県の名前を漢字で書いてみよう！ヒント、読み方は「${pref.reading}」です。`);
+    if (isHardMode) {
+      Speech.speakQuestion(`地図の赤い場所はどこかな？漢字で書いてみよう！`);
+    } else {
+      Speech.speakQuestion(`この都道府県の名前を漢字で書いてみよう！ヒント、読み方は「${pref.reading}」です。`);
+    }
 
     // ヒントボタン（最初は非表示）
     document.getElementById('show-hint-btn').classList.add('hidden');

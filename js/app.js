@@ -54,13 +54,13 @@ document.addEventListener('DOMContentLoaded', () => {
       selectedPref = pref;
       _openPrefPanel(pref);
     },
-    goStep1: (pref) => {
+    goStep1: (pref, isHardMode = false) => {
       selectedPref = pref;
       showView('view-step1');
-      document.getElementById('header-title-text').textContent = `✍️ ${pref.name}を書こう`;
+      document.getElementById('header-title-text').textContent = isHardMode ? `😈 ${pref.name}を書こう（ノーヒント）` : `✍️ ${pref.name}を書こう`;
       Quiz.initStep1(pref, currentUser.id, (step) => {
         _onStepComplete(step);
-      });
+      }, isHardMode);
     },
     goStep2: (pref) => {
       selectedPref = pref;
@@ -355,6 +355,10 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('random-setup-modal').classList.add('hidden');
     startRandomTest(1);
   });
+  document.getElementById('btn-rand-step1-hard')?.addEventListener('click', () => {
+    document.getElementById('random-setup-modal').classList.add('hidden');
+    startRandomTest('1-hard');
+  });
   document.getElementById('btn-rand-step2')?.addEventListener('click', () => {
     document.getElementById('random-setup-modal').classList.add('hidden');
     startRandomTest(2);
@@ -369,7 +373,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const targetList = currentMapMode === 'japan' ? PREFECTURES : COUNTRIES;
     const randomIndex = Math.floor(Math.random() * targetList.length);
     const pref = targetList[randomIndex];
-    if (stepNum === 1) window.AppRouter.goStep1(pref);
+    if (stepNum === 1) window.AppRouter.goStep1(pref, false);
+    else if (stepNum === '1-hard') window.AppRouter.goStep1(pref, true);
     else if (stepNum === 2 && currentMapMode === 'japan') window.AppRouter.goStep2(pref);
     else if (stepNum === 3 && currentMapMode === 'japan') window.AppRouter.goStep3(pref);
   }

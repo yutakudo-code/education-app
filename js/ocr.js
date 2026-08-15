@@ -75,13 +75,11 @@ const OCR = (() => {
     if (rec === normalize(prefName)) return { correct: true, score: 100, message: 'かんぺき！' };
     // ベース部分の一致（「神奈川」→「神奈川県」OK）
     if (rec === normalize(prefBase)) return { correct: true, score: 95, message: 'せいかい！（「' + prefName.slice(-1) + '」もわすれずに！）' };
-    // 部分一致（認識に少しミスがある場合）
-    if (normalize(prefName).includes(rec) && rec.length >= prefBase.length - 1) {
-      return { correct: true, score: 80, message: 'ほぼ正解！（少し字がにているかも）' };
-    }
+    
     // 1文字ミス（惜しい！）
-    if (levenshtein(rec, normalize(prefBase)) === 1) {
-      return { correct: false, score: 40, message: 'おしい！もう一文字！', hint: `「${prefName}」に近いよ！` };
+    if (levenshtein(rec, normalize(prefBase)) === 1 && rec.length === prefBase.length) {
+      // 文字数が同じで1文字だけ違う場合（誤字）
+      return { correct: false, score: 40, message: 'おしい！1文字だけちがうかも！', hint: `「${prefName}」に近いよ！` };
     }
     return { correct: false, score: 0, message: '「' + prefName + '」と書いてみよう！' };
   }
@@ -98,11 +96,9 @@ const OCR = (() => {
 
     if (rec === normalize(capName)) return { correct: true, score: 100, message: 'かんぺき！' };
     if (rec === normalize(capBase)) return { correct: true, score: 95, message: 'せいかい！' };
-    if (normalize(capName).includes(rec) && rec.length >= capBase.length - 1) {
-      return { correct: true, score: 80, message: 'ほぼ正解！' };
-    }
-    if (levenshtein(rec, normalize(capBase)) === 1) {
-      return { correct: false, score: 40, message: 'おしい！', hint: `「${capName}」をもう一度書いてみよう！` };
+    
+    if (levenshtein(rec, normalize(capBase)) === 1 && rec.length === capBase.length) {
+      return { correct: false, score: 40, message: 'おしい！1文字だけちがうかも！', hint: `「${capName}」をもう一度書いてみよう！` };
     }
     return { correct: false, score: 0, message: `「${capName}」と書いてみよう！` };
   }

@@ -42,18 +42,16 @@ class HandwritingCanvas {
   _bindEvents() {
     const c = this.canvas;
     const opts = { passive: false };
+    
     // Pointer Events（マウス・タッチ・Apple Pencil）
+    // iOSでは touch-action: none がスクロール防止の標準。touchstartのpreventDefaultはPointer Eventを壊す原因になるため削除
+    c.style.touchAction = 'none';
+
     c.addEventListener('pointerdown', e => this._onDown(e), opts);
     c.addEventListener('pointermove', e => this._onMove(e), opts);
     c.addEventListener('pointerup', e => this._onUp(e), opts);
     c.addEventListener('pointercancel', e => this._onUp(e), opts);
     c.addEventListener('pointerleave', e => this._onUp(e), opts);
-
-    // iOS Safari特有のスクロール・スクリブル（Apple Pencil）防止
-    c.addEventListener('touchstart', e => e.preventDefault(), opts);
-    c.addEventListener('touchmove', e => e.preventDefault(), opts);
-    
-    c.style.touchAction = 'none'; // スクロール防止
   }
 
   _getPos(e) {
@@ -66,24 +64,26 @@ class HandwritingCanvas {
 
   _getPressure(e) {
     if (e.pointerType === 'pen') {
-      return e.pressure; // Apple Pencilの場合は0〜1の実際の筆圧を返す（離すときは0に近づく）
+      return e.pressure || 0.5;
     }
-    return 0.5; // タッチやマウスの場合は一定
+    return 0.5;
   }
 
   _onDown(e) {
-    e.preventDefault();
-    if (e.pointerType === 'pen') this.penInUse = true;
-    // ペン使用中はタッチ（手のひら）を無視する簡易パームリジェクション
-    if (this.penInUse && e.pointerType === 'touch') return;
-
+    // マウスの右クリックなどは無視
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    
+    // そのストロークを描き始めたポインターの種類を記録（パームリジェクション用）
+    this.activePointerType = e.pointerType;
     this.isDrawing = true;
+
+    // PointerCaptureをセットすることで、キャンバス外に指が出てもイベントをトラッキングし続ける
+    try { this.canvas.setPointerCapture(e.pointerId); } catch (err) {}
+
     const pos = this._getPos(e);
     this.lastPressure = this._getPressure(e);
     if (this.lastPressure === 0 && e.pointerType === 'pen') this.lastPressure = 0.1;
     this.currentPath = [{ x: pos.x, y: pos.y, p: this.lastPressure }];
-    
-    // 最初から丸を描かず、動いたときに描画する（線の両側に不自然な丸がつくのを防ぐ）
     
     if (this.onStrokeStart) this.onStrokeStart();
   }
@@ -136,7 +136,10 @@ class HandwritingCanvas {
 
   _onMove(e) {
     if (!this.isDrawing) return;
-    if (this.penInUse && e.pointerType === 'touch') return;
+    
+    // このストロークを始めたポインター以外（手のひらなど）のイベントは完全に無視する（完璧なパームリジェクション）
+    if (e.pointerType !== this.activePointerType) return;
+    
     e.preventDefault();
 
     const addPoint = (ev) => {
@@ -164,9 +167,13 @@ class HandwritingCanvas {
 
   _onUp(e) {
     if (!this.isDrawing) return;
-    if (this.penInUse && e.pointerType === 'touch') return;
+    // 違うポインター（手など）が離れたイベントは無視
+    if (e.pointerType !== this.activePointerType) return;
+    
     this.isDrawing = false;
     
+    try { this.canvas.releasePointerCapture(e.pointerId); } catch (err) {}
+
     const pos = this._getPos(e);
     let p = this._getPressure(e);
     this.currentPath.push({ x: pos.x, y: pos.y, p: p });
