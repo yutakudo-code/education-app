@@ -10,6 +10,8 @@ class HandwritingCanvas {
     this.penSize = options.penSize || 12;
     this.penColor = options.penColor || '#1a1a2e';
     this.bgColor = options.bgColor || '#fffef7';
+    this.onStrokeStart = options.onStrokeStart || null;
+    this.onStrokeEnd = options.onStrokeEnd || null;
     this.paths = [];
     this.currentPath = [];
     this.isDrawing = false;
@@ -39,12 +41,18 @@ class HandwritingCanvas {
 
   _bindEvents() {
     const c = this.canvas;
+    const opts = { passive: false };
     // Pointer Events（マウス・タッチ・Apple Pencil）
-    c.addEventListener('pointerdown', e => this._onDown(e));
-    c.addEventListener('pointermove', e => this._onMove(e));
-    c.addEventListener('pointerup', e => this._onUp(e));
-    c.addEventListener('pointercancel', e => this._onUp(e));
-    c.addEventListener('pointerleave', e => this._onUp(e));
+    c.addEventListener('pointerdown', e => this._onDown(e), opts);
+    c.addEventListener('pointermove', e => this._onMove(e), opts);
+    c.addEventListener('pointerup', e => this._onUp(e), opts);
+    c.addEventListener('pointercancel', e => this._onUp(e), opts);
+    c.addEventListener('pointerleave', e => this._onUp(e), opts);
+
+    // iOS Safari特有のスクロール・スクリブル（Apple Pencil）防止
+    c.addEventListener('touchstart', e => e.preventDefault(), opts);
+    c.addEventListener('touchmove', e => e.preventDefault(), opts);
+    
     c.style.touchAction = 'none'; // スクロール防止
   }
 
@@ -76,6 +84,8 @@ class HandwritingCanvas {
     this.currentPath = [{ x: pos.x, y: pos.y, p: this.lastPressure }];
     
     // 最初から丸を描かず、動いたときに描画する（線の両側に不自然な丸がつくのを防ぐ）
+    
+    if (this.onStrokeStart) this.onStrokeStart();
   }
 
   _drawLiveSegment() {
@@ -181,6 +191,8 @@ class HandwritingCanvas {
       this.undoStack.push('path');
     }
     this.currentPath = [];
+    
+    if (this.onStrokeEnd) this.onStrokeEnd();
   }
 
   _clear(silent = false) {
