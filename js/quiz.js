@@ -58,13 +58,10 @@ const Quiz = (() => {
     });
     document.getElementById('canvas-clear-btn').addEventListener('click', () => {
       activeCanvas.clear();
-      if (autoJudgeTimer) clearTimeout(autoJudgeTimer);
       document.getElementById('step1-result').classList.add('hidden');
     });
     document.getElementById('canvas-undo-btn').addEventListener('click', () => {
       activeCanvas.undo();
-      if (autoJudgeTimer) clearTimeout(autoJudgeTimer);
-      handleStrokeEnd(); // 消した後も1秒後に自動判定
     });
 
     // 音声で問題を読む
@@ -88,7 +85,6 @@ const Quiz = (() => {
     const newBtn = judgeBtn.cloneNode(true);
     judgeBtn.parentNode.replaceChild(newBtn, judgeBtn);
     newBtn.addEventListener('click', () => {
-      if (autoJudgeTimer) clearTimeout(autoJudgeTimer);
       _judgeStep1(false);
     });
 

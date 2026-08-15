@@ -91,47 +91,28 @@ class HandwritingCanvas {
   _drawLiveSegment() {
     const pts = this.currentPath;
     const len = pts.length;
+    if (len < 2) {
+      if (len === 1 && !this.isDrawing) {
+        this.ctx.beginPath();
+        this.ctx.arc(pts[0].x, pts[0].y, (this.penSize * pts[0].p * 1.5) / 2, 0, Math.PI * 2);
+        this.ctx.fillStyle = this.penColor;
+        this.ctx.fill();
+      }
+      return;
+    }
     
     this.ctx.strokeStyle = this.penColor;
     this.ctx.lineCap = 'round';
     this.ctx.lineJoin = 'round';
 
-    if (len === 1 && !this.isDrawing) {
-      // 点を打つ（タップ）だけの場合
-      this.ctx.beginPath();
-      this.ctx.arc(pts[0].x, pts[0].y, (this.penSize * pts[0].p * 1.5) / 2, 0, Math.PI * 2);
-      this.ctx.fillStyle = this.penColor;
-      this.ctx.fill();
-      return;
-    }
-
-    if (len === 2) {
-      const p0 = pts[0];
-      const p1 = pts[1];
-      const mid = { x: (p0.x + p1.x) / 2, y: (p0.y + p1.y) / 2 };
-      this.ctx.beginPath();
-      this.ctx.moveTo(p0.x, p0.y);
-      this.ctx.lineTo(mid.x, mid.y);
-      this.ctx.lineWidth = this.penSize * p0.p * 1.5;
-      this.ctx.stroke();
-      return;
-    }
+    const p0 = pts[len - 2];
+    const p1 = pts[len - 1];
     
-    if (len >= 3) {
-      const p0 = pts[len - 3];
-      const p1 = pts[len - 2];
-      const p2 = pts[len - 1];
-      
-      const mid1 = { x: (p0.x + p1.x) / 2, y: (p0.y + p1.y) / 2 };
-      const mid2 = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
-      
-      this.ctx.beginPath();
-      this.ctx.moveTo(mid1.x, mid1.y);
-      this.ctx.quadraticCurveTo(p1.x, p1.y, mid2.x, mid2.y);
-      // 筆圧に忠実に太さを変える（離すときは細くフェードアウトする）
-      this.ctx.lineWidth = this.penSize * p1.p * 1.5;
-      this.ctx.stroke();
-    }
+    this.ctx.beginPath();
+    this.ctx.moveTo(p0.x, p0.y);
+    this.ctx.lineTo(p1.x, p1.y);
+    this.ctx.lineWidth = this.penSize * p1.p * 1.5;
+    this.ctx.stroke();
   }
 
   _onMove(e) {
@@ -145,14 +126,8 @@ class HandwritingCanvas {
     const addPoint = (ev) => {
       const pos = this._getPos(ev);
       let p = this._getPressure(ev);
-      this.lastPressure = this.lastPressure * 0.7 + p * 0.3; // スムージング
+      this.lastPressure = this.lastPressure * 0.4 + p * 0.6; // よりレスポンスよく
 
-      const last = this.currentPath[this.currentPath.length - 1];
-      if (last) {
-        const dx = pos.x - last.x;
-        const dy = pos.y - last.y;
-        if (dx * dx + dy * dy < 2) return; // 近すぎる点をスキップ
-      }
       this.currentPath.push({ x: pos.x, y: pos.y, p: this.lastPressure });
       this._drawLiveSegment();
     };
@@ -179,19 +154,7 @@ class HandwritingCanvas {
     this.currentPath.push({ x: pos.x, y: pos.y, p: p });
     this._drawLiveSegment();
 
-    // 最後のセグメントの描画
-    const pts = this.currentPath;
-    const len = pts.length;
-    if (len >= 2) {
-      const p1 = pts[len - 2];
-      const p2 = pts[len - 1];
-      const mid = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
-      this.ctx.beginPath();
-      this.ctx.moveTo(mid.x, mid.y);
-      this.ctx.lineTo(p2.x, p2.y);
-      this.ctx.lineWidth = this.penSize * p2.p * 1.5;
-      this.ctx.stroke();
-    }
+
 
     if (this.currentPath.length > 0) {
       this.paths.push({ points: [...this.currentPath], penSize: this.penSize, color: this.penColor });
@@ -310,10 +273,10 @@ class HandwritingCanvas {
     // オフスクリーンキャンバスに白背景で書き出し
     const tmpCanvas = document.createElement('canvas');
     // アスペクト比を維持しつつ、大きすぎないサイズに縮小（OCR精度と速度のため）
-    // 横幅または縦幅の最大を400px程度にする
-    const scale = Math.min(400 / this.canvas.width, 400 / this.canvas.height, 1);
-    const W = Math.round(this.canvas.width * scale) || 400;
-    const H = Math.round(this.canvas.height * scale) || 400;
+    // 横幅または縦幅の最大を600px程度にする（画数が多くても潰れにくいように）
+    const scale = Math.min(600 / this.canvas.width, 600 / this.canvas.height, 1);
+    const W = Math.round(this.canvas.width * scale) || 600;
+    const H = Math.round(this.canvas.height * scale) || 600;
     
     tmpCanvas.width = W; 
     tmpCanvas.height = H;
