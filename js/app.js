@@ -563,8 +563,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // モードごとの開始ボタン
   document.getElementById('btn-chal-survival-kanji')?.addEventListener('click', () => startChallenge('survival', 'kanji'));
+  document.getElementById('btn-chal-survival-kanji-hard')?.addEventListener('click', () => startChallenge('survival', 'kanji', true));
   document.getElementById('btn-chal-survival-quiz')?.addEventListener('click', () => startChallenge('survival', 'quiz'));
+  
   document.getElementById('btn-chal-tour-kanji')?.addEventListener('click', () => startChallenge('tour', 'kanji'));
+  document.getElementById('btn-chal-tour-kanji-hard')?.addEventListener('click', () => startChallenge('tour', 'kanji', true));
   document.getElementById('btn-chal-tour-quiz')?.addEventListener('click', () => startChallenge('tour', 'quiz'));
 
   document.getElementById('btn-cancel-challenge')?.addEventListener('click', () => {
