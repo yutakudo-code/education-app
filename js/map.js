@@ -49,8 +49,12 @@ const JapanMap = (() => {
     const W = container.clientWidth || 500;
     const viewH = container.clientHeight || 450;
     
-    // 地図を大きめ（縦1.6倍）に描画してスクロールさせる
-    const mapH = viewH * 1.6;
+    // 地図を大きめに描画してスクロールさせる
+    // 縦長画面（スマホ）ならviewHベース、横長画面（iPadやPC）なら幅(W)ベースで計算して小さくなりすぎるのを防ぐ
+    let mapH = viewH * 1.6;
+    if (W > viewH) {
+      mapH = W * 1.2; 
+    }
 
     svgEl.attr('width', W).attr('height', mapH).attr('viewBox', `0 0 ${W} ${mapH}`);
 

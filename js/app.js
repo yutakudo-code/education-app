@@ -462,7 +462,6 @@ document.addEventListener('DOMContentLoaded', () => {
     
     challengeStartTime = Date.now();
 
-    document.getElementById('challenge-hud').classList.remove('hidden');
     if (mode === 'survival') {
       challengeTimeLeft = 60;
       updateChallengeTimerDisplay();
@@ -490,7 +489,6 @@ document.addEventListener('DOMContentLoaded', () => {
       challengeTimer = null;
     }
     document.getElementById('challenge-header').classList.add('hidden');
-    document.getElementById('challenge-hud').classList.add('hidden');
     currentRandomStep = null;
   };
 
@@ -500,7 +498,6 @@ document.addEventListener('DOMContentLoaded', () => {
       challengeTimer = null;
     }
     document.getElementById('challenge-header').classList.add('hidden');
-    document.getElementById('challenge-hud').classList.add('hidden');
     
     const resModal = document.getElementById('random-result-modal');
     if (challengeMode === 'survival') {
