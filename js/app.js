@@ -152,11 +152,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // ヘッダーロゴクリックでポータルへ
   document.getElementById('header-logo-btn')?.addEventListener('click', () => {
     Speech.stop();
-    currentRandomStep = null;
-    if (typeof finishChallenge === 'function') {
-      try { finishChallenge(); } catch(e){}
+    if (typeof cancelChallenge === 'function') {
+      try { cancelChallenge(); } catch(e){}
     }
-    // もしすでにホーム画面ならポータルへ、ステップ中ならホームへ戻るのが自然か？
     // トップ画面＝ポータル と解釈してポータルへ戻る
     window.AppRouter.goPortal();
   });
@@ -264,7 +262,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // 戻るボタン
   document.getElementById('back-btn').addEventListener('click', () => {
     Speech.stop();
-    currentRandomStep = null; // ランダムモード解除
+    if (typeof cancelChallenge === 'function') {
+      try { cancelChallenge(); } catch(e){}
+    }
     if (selectedPref) {
       window.AppRouter.goHome();
       setTimeout(() => _openPrefPanel(selectedPref), 100);
@@ -484,10 +484,23 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('challenge-timer').textContent = `⏱️ ${challengeTimeLeft}秒`;
   }
 
-  function finishChallenge() {
-    clearInterval(challengeTimer);
-    document.getElementById('challenge-hud').classList.add('hidden');
+  window.cancelChallenge = function() {
+    if (challengeTimer) {
+      clearInterval(challengeTimer);
+      challengeTimer = null;
+    }
     document.getElementById('challenge-header').classList.add('hidden');
+    document.getElementById('challenge-hud').classList.add('hidden');
+    currentRandomStep = null;
+  };
+
+  function finishChallenge() {
+    if (challengeTimer) {
+      clearInterval(challengeTimer);
+      challengeTimer = null;
+    }
+    document.getElementById('challenge-header').classList.add('hidden');
+    document.getElementById('challenge-hud').classList.add('hidden');
     
     const resModal = document.getElementById('random-result-modal');
     if (challengeMode === 'survival') {
