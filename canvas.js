@@ -108,60 +108,53 @@ class HandwritingCanvas {
     if (this.onStrokeStart) this.onStrokeStart();
   }
 
-  _drawLiveSegment() {
+  // 新しいポイントからの描画セグメントを一括描画（高速化）
+  _drawSegments(startIdx) {
     const pts = this.currentPath;
-    const len = pts.length;
-    if (len < 2) {
-      if (len === 1 && !this.isDrawing) {
-        this.ctx.beginPath();
-        this.ctx.arc(pts[0].x, pts[0].y, (this.penSize * pts[0].p * 1.5) / 2, 0, Math.PI * 2);
-        this.ctx.fillStyle = this.penColor;
-        this.ctx.fill();
-      }
-      return;
-    }
+    if (pts.length < 2 || startIdx >= pts.length) return;
     
     this.ctx.strokeStyle = this.penColor;
     this.ctx.lineCap = 'round';
     this.ctx.lineJoin = 'round';
+    this.ctx.lineWidth = this.penSize * 1.2;
 
-    const p0 = pts[len - 2];
-    const p1 = pts[len - 1];
-    
+    // 全ての新しいセグメントを1つのパスにまとめて一括描画（高速）
     this.ctx.beginPath();
-    this.ctx.moveTo(p0.x, p0.y);
-    this.ctx.lineTo(p1.x, p1.y);
-    this.ctx.lineWidth = this.penSize * p1.p * 1.5;
+    this.ctx.moveTo(pts[Math.max(0, startIdx - 1)].x, pts[Math.max(0, startIdx - 1)].y);
+    for (let i = startIdx; i < pts.length; i++) {
+      this.ctx.lineTo(pts[i].x, pts[i].y);
+    }
     this.ctx.stroke();
   }
 
   _onMove(e) {
     if (!this.isDrawing) return;
-    // ★ pointerId で厳密に判定（pointerType だと手のひらの touch イベントを誤って拾う）
     if (e.pointerId !== this.activePointerId) return;
     
     e.preventDefault();
     e.stopPropagation();
 
-    const addPoint = (ev) => {
-      const pos = this._getPos(ev);
-      let p = this._getPressure(ev);
-      this.lastPressure = this.lastPressure * 0.4 + p * 0.6;
+    const prevLen = this.currentPath.length;
 
-      this.currentPath.push({ x: pos.x, y: pos.y, p: this.lastPressure });
-      this._drawLiveSegment();
+    // 全ポイントを一気に収集（描画はまとめて後で行う）
+    const collectPoint = (ev) => {
+      const pos = this._getPos(ev);
+      this.currentPath.push({ x: pos.x, y: pos.y, p: this._getPressure(ev) });
     };
 
     if (e.getCoalescedEvents) {
       const events = e.getCoalescedEvents();
       if (events.length > 0) {
-        events.forEach(ev => addPoint(ev));
+        for (let i = 0; i < events.length; i++) collectPoint(events[i]);
       } else {
-        addPoint(e);
+        collectPoint(e);
       }
     } else {
-      addPoint(e);
+      collectPoint(e);
     }
+
+    // 収集した全ポイントを1回のcanvas描画でまとめて描く
+    this._drawSegments(prevLen);
   }
 
   _onUp(e) {
@@ -176,8 +169,9 @@ class HandwritingCanvas {
 
     const pos = this._getPos(e);
     let p = this._getPressure(e);
+    const prevLen = this.currentPath.length;
     this.currentPath.push({ x: pos.x, y: pos.y, p: p });
-    this._drawLiveSegment();
+    this._drawSegments(prevLen);
 
     this._saveCurrentStroke();
     
@@ -329,16 +323,20 @@ class HandwritingCanvas {
       }
     }
 
-    const contentW = maxX - minX || 1;
-    const contentH = maxY - minY || 1;
+    // コンテンツのサイズ（最小80pxを確保: 「二」のような薄い文字が潰れないようにする）
+    const contentW = Math.max(maxX - minX, 80) || 80;
+    const contentH = Math.max(maxY - minY, 80) || 80;
 
     // 固定サイズのOCR用キャンバス（400x400px、余白15%）
     const OCR_SIZE = 400;
     const PADDING = 0.15;
     const drawArea = OCR_SIZE * (1 - PADDING * 2);
     const scaleFactor = Math.min(drawArea / contentW, drawArea / contentH);
-    const offsetX = (OCR_SIZE - contentW * scaleFactor) / 2;
-    const offsetY = (OCR_SIZE - contentH * scaleFactor) / 2;
+    // バウンディングボックスの中心を使う（最小サイズ保証のためオリジナルの値で計算）
+    const origW = maxX - minX || 1;
+    const origH = maxY - minY || 1;
+    const offsetX = (OCR_SIZE - origW * scaleFactor) / 2;
+    const offsetY = (OCR_SIZE - origH * scaleFactor) / 2;
 
     const tmpCanvas = document.createElement('canvas');
     tmpCanvas.width = OCR_SIZE;
@@ -349,8 +347,8 @@ class HandwritingCanvas {
     tmpCtx.fillStyle = '#ffffff';
     tmpCtx.fillRect(0, 0, OCR_SIZE, OCR_SIZE);
 
-    // 固定の線の太さ（3px - OCRに最適な太さ）
-    const LINE_WIDTH = 3;
+    // 固定の線の太さ（5px - 細すぎると「二」の2本線がかすれて認識されない）
+    const LINE_WIDTH = 5;
     tmpCtx.strokeStyle = '#000000';
     tmpCtx.fillStyle = '#000000';
     tmpCtx.lineCap = 'round';
