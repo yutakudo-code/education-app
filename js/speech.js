@@ -62,28 +62,53 @@ const Speech = (() => {
   // ヒントを読む
   function speakHint(text) { speak(`ヒント！${text}`, { rate: 0.8 }); }
 
-  // 正解効果音（Web Audio APIによるレベルアップ風サウンド）
-  function playSuccessSound() {
-    if (!enabled) return;
+  // 音声エフェクト用のAudioContext（iOS対応のためグローバルで保持し、ユーザーアクションで初期化する）
+  let audioCtx = null;
+
+  function initAudio() {
+    if (audioCtx) {
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      return;
+    }
     try {
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
-      if (!AudioCtx) return;
-      const ctx = new AudioCtx();
+      if (AudioCtx) {
+        audioCtx = new AudioCtx();
+        // 無音を一度再生してiOSのロックを解除
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        gain.gain.value = 0;
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.01);
+      }
+    } catch (e) {
+      console.warn('AudioContext init error:', e);
+    }
+  }
+
+  // 正解効果音（Web Audio APIによるレベルアップ風サウンド）
+  function playSuccessSound() {
+    if (!enabled || !audioCtx) return;
+    try {
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      
       const playTone = (freq, startTime, duration, type='square') => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
         osc.type = type;
         osc.frequency.setValueAtTime(freq, startTime);
         gain.gain.setValueAtTime(0, startTime);
         gain.gain.linearRampToValueAtTime(0.15, startTime + 0.02);
         gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
         osc.connect(gain);
-        gain.connect(ctx.destination);
+        gain.connect(audioCtx.destination);
         osc.start(startTime);
         osc.stop(startTime + duration);
       };
       
-      const now = ctx.currentTime;
+      const now = audioCtx.currentTime;
       // レベルアップ風の軽快なアルペジオ
       playTone(523.25, now, 0.1);         // C5
       playTone(659.25, now + 0.1, 0.1);   // E5
@@ -91,7 +116,7 @@ const Speech = (() => {
       playTone(1046.50, now + 0.3, 0.1);  // C6
       playTone(1318.51, now + 0.4, 0.1);  // E6
       playTone(1567.98, now + 0.5, 0.6);  // G6 (長く伸ばす)
-    } catch (e) { console.warn('AudioContext error:', e); }
+    } catch (e) { console.warn('Audio play error:', e); }
   }
 
   // 止める
@@ -103,5 +128,5 @@ const Speech = (() => {
   function setEnabled(v) { enabled = v; if (!v) stop(); }
   function isEnabled() { return enabled; }
 
-  return { init, speak, speakPrefName, speakCapital, speakQuestion, speakCorrect, speakWrong, speakHint, playSuccessSound, stop, setEnabled, isEnabled };
+  return { init, initAudio, speak, speakPrefName, speakCapital, speakQuestion, speakCorrect, speakWrong, speakHint, playSuccessSound, stop, setEnabled, isEnabled };
 })();

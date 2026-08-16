@@ -19,23 +19,36 @@ class HandwritingCanvas {
     this.lastX = 0;
     this.lastY = 0;
     this.undoStack = [];
+    this.mode = 'pen'; // 'pen' or 'eraser'
 
     this._init();
   }
 
+  setMode(mode) {
+    this.mode = mode;
+  }
+
   _init() {
-    this._resize();
+    this.canvas.style.width = '100%';
+    this.canvas.style.height = '100%';
+    
+    // ResizeObserverで親要素のサイズ変更を監視
+    this.resizeObserver = new ResizeObserver(entries => {
+      for (let entry of entries) {
+        this._handleResize(entry.contentRect);
+      }
+    });
+    this.resizeObserver.observe(this.canvas.parentElement);
+    
     this._clear(true);
     this._bindEvents();
   }
 
-  _resize() {
-    const rect = this.canvas.parentElement.getBoundingClientRect();
+  _handleResize(rect) {
     const dpr = window.devicePixelRatio || 1;
+    // 描画バッファのサイズを更新
     this.canvas.width = rect.width * dpr;
     this.canvas.height = (rect.height || 300) * dpr;
-    this.canvas.style.width = rect.width + 'px';
-    this.canvas.style.height = (rect.height || 300) + 'px';
     this.ctx.scale(dpr, dpr);
     this._redraw();
   }
@@ -100,6 +113,11 @@ class HandwritingCanvas {
     // PointerCapture: このポインターのイベントを確実にこのCanvasで受け取る
     try { this.canvas.setPointerCapture(e.pointerId); } catch (err) {}
 
+    // iOSなどのために、最初のタッチでAudioContextのロックを解除する
+    if (typeof Speech !== 'undefined' && Speech.initAudio) {
+      Speech.initAudio();
+    }
+
     const pos = this._getPos(e);
     this.lastPressure = this._getPressure(e);
     if (this.lastPressure === 0 && e.pointerType === 'pen') this.lastPressure = 0.1;
@@ -113,10 +131,18 @@ class HandwritingCanvas {
     const pts = this.currentPath;
     if (pts.length < 2 || startIdx >= pts.length) return;
     
-    this.ctx.strokeStyle = this.penColor;
+    // 消しゴムモードの場合は GlobalCompositeOperation を変更
+    if (this.mode === 'eraser') {
+      this.ctx.globalCompositeOperation = 'destination-out';
+      this.ctx.lineWidth = this.penSize * 2.5; // 消しゴムは太めに
+    } else {
+      this.ctx.globalCompositeOperation = 'source-over';
+      this.ctx.strokeStyle = this.penColor;
+      this.ctx.lineWidth = this.penSize * 1.2;
+    }
+    
     this.ctx.lineCap = 'round';
     this.ctx.lineJoin = 'round';
-    this.ctx.lineWidth = this.penSize * 1.2;
 
     // 全ての新しいセグメントを1つのパスにまとめて一括描画（高速）
     this.ctx.beginPath();
@@ -125,6 +151,9 @@ class HandwritingCanvas {
       this.ctx.lineTo(pts[i].x, pts[i].y);
     }
     this.ctx.stroke();
+    
+    // 元に戻す
+    this.ctx.globalCompositeOperation = 'source-over';
   }
 
   _onMove(e) {
@@ -195,10 +224,14 @@ class HandwritingCanvas {
 
   _saveCurrentStroke() {
     if (this.currentPath.length > 0) {
-      this.paths.push({ points: [...this.currentPath], penSize: this.penSize, color: this.penColor });
-      this.undoStack.push('path');
+      this.paths.push({ 
+        points: [...this.currentPath], 
+        penSize: this.penSize,
+        isEraser: this.mode === 'eraser' 
+      });
+      this.currentPath = [];
+      this.undoStack = [];
     }
-    this.currentPath = [];
   }
 
   _clear(silent = false) {
@@ -221,67 +254,30 @@ class HandwritingCanvas {
     this.ctx.setLineDash([]);
   }
 
-  _drawSmoothPath(path) {
-    const pts = path.points;
-    if (pts.length === 0) return;
-    
-    this.ctx.strokeStyle = path.color;
-    this.ctx.lineCap = 'round';
-    this.ctx.lineJoin = 'round';
-
-    if (pts.length === 1) {
-      this.ctx.beginPath();
-      this.ctx.arc(pts[0].x, pts[0].y, (path.penSize * pts[0].p * 1.5) / 2, 0, Math.PI * 2);
-      this.ctx.fillStyle = path.color;
-      this.ctx.fill();
-      return;
-    }
-    
-    if (pts.length === 2) {
-      this.ctx.beginPath();
-      this.ctx.moveTo(pts[0].x, pts[0].y);
-      this.ctx.lineTo(pts[1].x, pts[1].y);
-      this.ctx.lineWidth = path.penSize * pts[1].p * 1.5;
-      this.ctx.stroke();
-      return;
-    }
-
-    this.ctx.beginPath();
-    this.ctx.moveTo(pts[0].x, pts[0].y);
-    const mid0 = { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 };
-    this.ctx.lineTo(mid0.x, mid0.y);
-    this.ctx.lineWidth = path.penSize * pts[0].p * 1.5;
-    this.ctx.stroke();
-
-    for (let i = 1; i < pts.length - 1; i++) {
-      const p0 = pts[i - 1];
-      const p1 = pts[i];
-      const p2 = pts[i + 1];
-      
-      const mid1 = { x: (p0.x + p1.x) / 2, y: (p0.y + p1.y) / 2 };
-      const mid2 = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
-      
-      this.ctx.beginPath();
-      this.ctx.moveTo(mid1.x, mid1.y);
-      this.ctx.quadraticCurveTo(p1.x, p1.y, mid2.x, mid2.y);
-      this.ctx.lineWidth = path.penSize * p1.p * 1.5;
-      this.ctx.stroke();
-    }
-
-    const lastIdx = pts.length - 1;
-    const midLast = { x: (pts[lastIdx-1].x + pts[lastIdx].x) / 2, y: (pts[lastIdx-1].y + pts[lastIdx].y) / 2 };
-    this.ctx.beginPath();
-    this.ctx.moveTo(midLast.x, midLast.y);
-    this.ctx.lineTo(pts[lastIdx].x, pts[lastIdx].y);
-    this.ctx.lineWidth = path.penSize * pts[lastIdx].p * 1.5;
-    this.ctx.stroke();
-  }
-
   _redraw() {
-    this._clear(true);
-    this.paths.forEach(path => {
-      this._drawSmoothPath(path);
-    });
+    this._clear();
+    for (const path of this.paths) {
+      if (path.points.length < 2) continue;
+      
+      if (path.isEraser) {
+        this.ctx.globalCompositeOperation = 'destination-out';
+        this.ctx.lineWidth = path.penSize * 2.5;
+      } else {
+        this.ctx.globalCompositeOperation = 'source-over';
+        this.ctx.strokeStyle = path.color || this.penColor;
+        this.ctx.lineWidth = path.penSize * 1.2;
+      }
+      
+      this.ctx.lineCap = 'round';
+      this.ctx.lineJoin = 'round';
+      this.ctx.beginPath();
+      this.ctx.moveTo(path.points[0].x, path.points[0].y);
+      for (let i = 1; i < path.points.length; i++) {
+        this.ctx.lineTo(path.points[i].x, path.points[i].y);
+      }
+      this.ctx.stroke();
+    }
+    this.ctx.globalCompositeOperation = 'source-over';
   }
 
   // 公開メソッド
@@ -309,12 +305,15 @@ class HandwritingCanvas {
     // 全ストロークからバウンディングボックスを計算
     const allPaths = [...this.paths];
     if (this.currentPath.length > 0) {
-      allPaths.push({ points: [...this.currentPath], penSize: this.penSize });
+      allPaths.push({ points: [...this.currentPath], penSize: this.penSize, isEraser: this.mode === 'eraser' });
     }
     if (allPaths.length === 0) return '';
 
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    let hasPenStroke = false;
     for (const path of allPaths) {
+      if (path.isEraser) continue; // 消しゴムのストロークはバウンディングボックスに含めない
+      hasPenStroke = true;
       for (const pt of path.points) {
         if (pt.x < minX) minX = pt.x;
         if (pt.y < minY) minY = pt.y;
@@ -322,6 +321,7 @@ class HandwritingCanvas {
         if (pt.y > maxY) maxY = pt.y;
       }
     }
+    if (!hasPenStroke) return ''; // ペンの描画がない場合
 
     // コンテンツのサイズ（最小80pxを確保: 「二」のような薄い文字が潰れないようにする）
     const contentW = Math.max(maxX - minX, 80) || 80;
@@ -349,31 +349,29 @@ class HandwritingCanvas {
 
     // 固定の線の太さ（5px - 細すぎると「二」の2本線がかすれて認識されない）
     const LINE_WIDTH = 5;
-    tmpCtx.strokeStyle = '#000000';
-    tmpCtx.fillStyle = '#000000';
     tmpCtx.lineCap = 'round';
     tmpCtx.lineJoin = 'round';
-    tmpCtx.lineWidth = LINE_WIDTH;
 
     for (const path of allPaths) {
-      const pts = path.points;
-      if (pts.length === 0) continue;
-
-      // 座標を正規化してOCRキャンバスに描画
-      const tx = (pt) => (pt.x - minX) * scaleFactor + offsetX;
-      const ty = (pt) => (pt.y - minY) * scaleFactor + offsetY;
-
-      if (pts.length === 1) {
-        tmpCtx.beginPath();
-        tmpCtx.arc(tx(pts[0]), ty(pts[0]), LINE_WIDTH / 2, 0, Math.PI * 2);
-        tmpCtx.fill();
-        continue;
+      if (path.points.length < 2) continue;
+      
+      if (path.isEraser) {
+        tmpCtx.globalCompositeOperation = 'destination-out';
+        tmpCtx.lineWidth = LINE_WIDTH * 2.5; // 消しゴムは太く
+      } else {
+        tmpCtx.globalCompositeOperation = 'source-over';
+        tmpCtx.strokeStyle = '#000000';
+        tmpCtx.lineWidth = LINE_WIDTH;
       }
-
+      
       tmpCtx.beginPath();
-      tmpCtx.moveTo(tx(pts[0]), ty(pts[0]));
-      for (let i = 1; i < pts.length; i++) {
-        tmpCtx.lineTo(tx(pts[i]), ty(pts[i]));
+      const p0x = offsetX + (path.points[0].x - minX) * scaleFactor;
+      const p0y = offsetY + (path.points[0].y - minY) * scaleFactor;
+      tmpCtx.moveTo(p0x, p0y);
+      for (let i = 1; i < path.points.length; i++) {
+        const px = offsetX + (path.points[i].x - minX) * scaleFactor;
+        const py = offsetY + (path.points[i].y - minY) * scaleFactor;
+        tmpCtx.lineTo(px, py);
       }
       tmpCtx.stroke();
     }

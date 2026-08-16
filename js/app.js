@@ -64,7 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
       showView('view-step1');
       const isWorld = pref.region === 'world';
       const actionText = currentMapMode === 'japan' ? '漢字で！' : 'カタカナで！';
-      document.getElementById('header-title-text').textContent = isHardMode ? `😈 ここはどこ？（ノーヒント）` : `✍️ ${pref.name}を${actionText}`;
+      document.getElementById('header-title-text').textContent = isHardMode ? `😈 ここはどこ？（ノーヒント）` : `✍️ ${pref.reading}を${actionText}`;
       Quiz.initStep1(pref, currentUser.id, (step) => {
         _onStepComplete(step);
       }, isHardMode);
@@ -366,7 +366,13 @@ document.addEventListener('DOMContentLoaded', () => {
       randBtn.parentNode.replaceChild(newRandBtn, randBtn);
       newRandBtn.addEventListener('click', () => {
         overlay.classList.add('hidden');
-        startRandomTest(currentRandomStep);
+        if (currentRandomStep === 'challenge') {
+          challengeScore++;
+          challengeCurrentIndex++;
+          nextChallengeQuestion();
+        } else {
+          startRandomTest(currentRandomStep);
+        }
       });
     } else {
       randBtn.classList.add('hidden');

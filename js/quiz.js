@@ -52,16 +52,41 @@ const Quiz = (() => {
       onStrokeStart: handleStrokeStart
     });
 
-    // ツールバー
+    // ツールバーのイベント重複登録を防ぐ
+    const oldTools = document.querySelector('.canvas-tools');
+    const newTools = oldTools.cloneNode(true);
+    oldTools.parentNode.replaceChild(newTools, oldTools);
+
     document.getElementById('pen-size').addEventListener('input', e => {
-      activeCanvas.setPenSize(e.target.value);
+      if (activeCanvas) activeCanvas.setPenSize(e.target.value);
     });
     document.getElementById('canvas-clear-btn').addEventListener('click', () => {
-      activeCanvas.clear();
+      if (activeCanvas) activeCanvas.clear();
       document.getElementById('step1-result').classList.add('hidden');
     });
     document.getElementById('canvas-undo-btn').addEventListener('click', () => {
-      activeCanvas.undo();
+      if (activeCanvas) activeCanvas.undo();
+    });
+
+    const penBtn = document.getElementById('canvas-pen-btn');
+    const eraserBtn = document.getElementById('canvas-eraser-btn');
+    penBtn.addEventListener('click', () => {
+      if (activeCanvas) {
+        activeCanvas.setMode('pen');
+        penBtn.classList.add('active-tool');
+        penBtn.style.background = '#d0c8ff';
+        eraserBtn.classList.remove('active-tool');
+        eraserBtn.style.background = '';
+      }
+    });
+    eraserBtn.addEventListener('click', () => {
+      if (activeCanvas) {
+        activeCanvas.setMode('eraser');
+        eraserBtn.classList.add('active-tool');
+        eraserBtn.style.background = '#d0c8ff';
+        penBtn.classList.remove('active-tool');
+        penBtn.style.background = '';
+      }
     });
 
     // 音声で問題を読む

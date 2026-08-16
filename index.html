@@ -249,8 +249,9 @@
       <div class="canvas-area" style="position:relative;">
         <canvas id="writing-canvas" aria-label="手書き入力エリア"></canvas>
         <div class="canvas-tools">
+          <button id="canvas-pen-btn" class="tool-btn active-tool" title="ペン" aria-label="ペン" style="background:#d0c8ff;">✏️</button>
+          <button id="canvas-eraser-btn" class="tool-btn" title="消しゴム" aria-label="消しゴム">🧼</button>
           <div class="pen-size-slider">
-            <label title="ペンの太さ">✏️</label>
             <input type="range" id="pen-size" min="4" max="28" value="14" aria-label="ペンの太さ">
           </div>
           <button id="canvas-undo-btn" class="tool-btn" title="1つもどす" aria-label="もとに戻す">↩️</button>
