@@ -151,6 +151,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ヘッダーロゴクリックでポータルへ
   document.getElementById('header-logo-btn')?.addEventListener('click', () => {
+    Speech.stop();
+    currentRandomStep = null;
+    if (typeof finishChallenge === 'function') {
+      try { finishChallenge(); } catch(e){}
+    }
+    // もしすでにホーム画面ならポータルへ、ステップ中ならホームへ戻るのが自然か？
+    // トップ画面＝ポータル と解釈してポータルへ戻る
     window.AppRouter.goPortal();
   });
 
