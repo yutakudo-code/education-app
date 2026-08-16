@@ -506,10 +506,9 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (challengeType === 'kanji') {
       const actionText = isWorld ? 'カタカナで！' : '漢字で！';
-      const readingText = isWorld ? 'この国' : pref.reading;
-      document.getElementById('challenge-question').textContent = `✍️ 「${readingText}」を${actionText}`;
-      // 世界モードは地図のみ（ノーヒント）
-      window.AppRouter.goStep1(pref, false);
+      document.getElementById('challenge-question').textContent = `🗺️ 地図の赤い場所を${actionText}`;
+      // チャレンジモードはノーヒント（HardMode: true）
+      window.AppRouter.goStep1(pref, true);
     } else if (challengeType === 'quiz') {
       document.getElementById('challenge-question').textContent = `🧩 クイズに答えよう！`;
       window.AppRouter.goStep3(pref, 'quiz');
