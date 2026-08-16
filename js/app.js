@@ -390,19 +390,19 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   document.getElementById('btn-rand-step1')?.addEventListener('click', () => {
-    document.getElementById('random-setup-modal').classList.add('hidden');
+    document.getElementById('random-setup-modal').classList.remove('hidden');
     startRandomTest(1);
   });
   document.getElementById('btn-rand-step1-hard')?.addEventListener('click', () => {
-    document.getElementById('random-setup-modal').classList.add('hidden');
+    document.getElementById('random-setup-modal').classList.remove('hidden');
     startRandomTest('1-hard');
   });
   document.getElementById('btn-rand-step2')?.addEventListener('click', () => {
-    document.getElementById('random-setup-modal').classList.add('hidden');
+    document.getElementById('random-setup-modal').classList.remove('hidden');
     startRandomTest(2);
   });
   document.getElementById('btn-rand-step3')?.addEventListener('click', () => {
-    document.getElementById('random-setup-modal').classList.add('hidden');
+    document.getElementById('random-setup-modal').classList.remove('hidden');
     startRandomTest(3);
   });
 
@@ -420,52 +420,66 @@ document.addEventListener('DOMContentLoaded', () => {
   // ============================================================
   // チャレンジ機能 (サバイバル & 全国一周)
   // ============================================================
-  let challengeInterval = null;
-  let challengeStartTime = 0;
+  let challengeTimer = null;
+  let challengeTimeLeft = 60;
+  let challengeMode = null; // 'survival', 'tour'
+  let challengeType = null; // 'kanji', 'quiz'
+  let challengeIsHard = false;
+  let challengeScore = 0;
   let challengeQueue = [];
   let challengeCurrentIndex = 0;
-  let challengeMode = ''; // 'survival' | 'tour'
-  let challengeType = ''; // 'kanji' | 'quiz'
-  let challengeScore = 0;
-  let challengeTimeRemaining = 60;
+  let challengeStartTime = 0;
+
+  function initChallengeQueue() {
+    let list = (currentMapMode === 'japan' ? PREFECTURES : COUNTRIES).filter(p => p.region !== 'world' || currentMapMode !== 'japan');
+    for (let i = list.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [list[i], list[j]] = [list[j], list[i]];
+    }
+    return list;
+  }
   
-  function startChallenge(mode, type) {
-    document.getElementById('challenge-setup-modal').classList.add('hidden');
+  function startChallenge(mode, type, isHard = false) {
+    document.getElementById('challenge-setup-modal')?.classList.add('hidden');
     challengeMode = mode;
     challengeType = type;
+    challengeIsHard = isHard;
     challengeScore = 0;
-    challengeTimeRemaining = 60;
+    challengeTimeLeft = 60;
 
-    const targetList = currentMapMode === 'japan' ? PREFECTURES : COUNTRIES;
-    const shuffled = [...targetList].sort(() => 0.5 - Math.random());
-    challengeQueue = shuffled;
+    challengeQueue = initChallengeQueue();
     challengeCurrentIndex = 0;
     
     document.getElementById('challenge-header').classList.remove('hidden');
     document.getElementById('challenge-timer').classList.remove('hidden');
     
     challengeStartTime = Date.now();
-    challengeInterval = setInterval(() => {
-      if (challengeMode === 'survival') {
-        challengeTimeRemaining -= 0.1;
-        if (challengeTimeRemaining <= 0) {
-          challengeTimeRemaining = 0;
-          document.getElementById('challenge-timer').textContent = `⏱️ 0.0秒`;
+
+    document.getElementById('challenge-hud').classList.remove('hidden');
+    if (mode === 'survival') {
+      challengeTimeLeft = 60;
+      updateChallengeTimerDisplay();
+      challengeTimer = setInterval(() => {
+        challengeTimeLeft--;
+        updateChallengeTimerDisplay();
+        if (challengeTimeLeft <= 0) {
           finishChallenge();
-        } else {
-          document.getElementById('challenge-timer').textContent = `⏱️ ${challengeTimeRemaining.toFixed(1)}秒`;
         }
-      } else {
-        const elapsed = Date.now() - challengeStartTime;
-        document.getElementById('challenge-timer').textContent = `⏱️ ${(elapsed / 1000).toFixed(1)}秒`;
-      }
-    }, 100);
+      }, 1000);
+    } else {
+      document.getElementById('challenge-timer').textContent = '⏱️ --:--';
+    }
     
     nextChallengeQuestion();
   }
 
+  function updateChallengeTimerDisplay() {
+    document.getElementById('challenge-timer').textContent = `⏱️ ${challengeTimeLeft}秒`;
+  }
+
   function finishChallenge() {
-    clearInterval(challengeInterval);
+    clearInterval(challengeTimer);
+    document.getElementById('challenge-hud').classList.add('hidden');
     document.getElementById('challenge-header').classList.add('hidden');
     
     const resModal = document.getElementById('random-result-modal');
@@ -485,8 +499,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function nextChallengeQuestion() {
     if (challengeCurrentIndex >= challengeQueue.length) {
       if (challengeMode === 'survival') {
-        // 全問解き終わっても時間が余っていたらループする
-        challengeQueue = [...challengeQueue].sort(() => 0.5 - Math.random());
+        challengeQueue = initChallengeQueue();
         challengeCurrentIndex = 0;
       } else {
         finishChallenge();
@@ -506,9 +519,13 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (challengeType === 'kanji') {
       const actionText = isWorld ? 'カタカナで！' : '漢字で！';
-      document.getElementById('challenge-question').textContent = `🗺️ 地図の赤い場所を${actionText}`;
-      // チャレンジモードはノーヒント（HardMode: true）
-      window.AppRouter.goStep1(pref, true);
+      const readingText = isWorld ? 'この国' : pref.reading;
+      if (challengeIsHard) {
+        document.getElementById('challenge-question').textContent = `🗺️ 地図の赤い場所を${actionText}`;
+      } else {
+        document.getElementById('challenge-question').textContent = `✍️ 「${readingText}」を${actionText}`;
+      }
+      window.AppRouter.goStep1(pref, challengeIsHard);
     } else if (challengeType === 'quiz') {
       document.getElementById('challenge-question').textContent = `🧩 クイズに答えよう！`;
       window.AppRouter.goStep3(pref, 'quiz');
