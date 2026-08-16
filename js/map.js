@@ -51,14 +51,13 @@ const JapanMap = (() => {
 
     svgEl.attr('width', W).attr('height', H).attr('viewBox', `0 0 ${W} ${H}`);
 
-    projection = d3.geoMercator()
-      .center([137, 35.5])
-      .scale(W * 2.8)
-      .translate([W / 2, H / 2]);
-
+    const geoJsonData = topojson.feature(topoData, topoData.objects.japan);
+    
+    // fitSizeを使ってSVG領域にピッタリ収まるように自動調整（北海道から沖縄まで）
+    projection = d3.geoMercator().fitSize([W, H], geoJsonData);
     pathGen = d3.geoPath().projection(projection);
 
-    const features = topojson.feature(topoData, topoData.objects.japan).features;
+    const features = geoJsonData.features;
     mapFeatures = features;
 
     gEl = svgEl.append('g').attr('class', 'map-g');

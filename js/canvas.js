@@ -317,8 +317,8 @@ class HandwritingCanvas {
       for (let i = 1; i < pts.length; i++) {
         tmpCtx.lineTo(pts[i].x, pts[i].y);
       }
-      // 筆圧に依存せず、少し太めで一定の線を書く（かすれによる認識漏れを防ぐ）
-      tmpCtx.lineWidth = path.penSize * 1.5;
+      // 線が重なって真っ黒の塊（潰れ）になるのを防ぐため、少し細めの一定の太さで描画する（OCR最適化）
+      tmpCtx.lineWidth = path.penSize * 0.8;
       tmpCtx.stroke();
     };
 
