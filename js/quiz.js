@@ -283,6 +283,29 @@ const Quiz = (() => {
       handleStrokeEnd2();
     });
 
+    const eraserBtn2 = document.getElementById('canvas2-eraser-btn');
+    if (eraserBtn2) {
+      // 一旦リセット
+      const newEraserBtn2 = eraserBtn2.cloneNode(true);
+      eraserBtn2.parentNode.replaceChild(newEraserBtn2, eraserBtn2);
+      
+      const btnPen = document.createElement('button'); // dummy
+      newEraserBtn2.classList.remove('active-tool');
+      newEraserBtn2.style.background = '';
+      
+      newEraserBtn2.addEventListener('click', () => {
+        if (activeCanvas2.mode === 'eraser') {
+          activeCanvas2.setMode('pen');
+          newEraserBtn2.classList.remove('active-tool');
+          newEraserBtn2.style.background = '';
+        } else {
+          activeCanvas2.setMode('eraser');
+          newEraserBtn2.classList.add('active-tool');
+          newEraserBtn2.style.background = '#d0c8ff';
+        }
+      });
+    }
+
     // モード切替
     const writeModeBtn = document.getElementById('mode-write-btn');
     const choiceModeBtn = document.getElementById('mode-choice-btn');
