@@ -81,11 +81,27 @@ const OCR = (() => {
         return { correct: true, score: 100, message: 'かんぺき！' };
       }
     }
-    
-    // 1文字ミス（惜しい！）
+
+    // 認識結果がターゲットを含む、またはターゲットが認識結果を含む（余計な文字がOCRで追加された場合）
     for (const target of validTargets) {
-      if (levenshtein(rec, target) === 1 && rec.length === target.length) {
-        return { correct: false, score: 40, message: 'おしい！1文字だけちがうかも！', hint: `「${pref.displayName || prefName}」に近いよ！` };
+      if (rec.includes(target) || target.includes(rec)) {
+        if (Math.abs(rec.length - target.length) <= 2) {
+          return { correct: true, score: 90, message: 'せいかい！' };
+        }
+      }
+    }
+    
+    // 1文字ミス（惜しい！）→ 正解扱いにする（OCRの誤認識を考慮）
+    for (const target of validTargets) {
+      if (levenshtein(rec, target) === 1) {
+        return { correct: true, score: 80, message: 'せいかい！（よく書けているよ！）' };
+      }
+    }
+
+    // 2文字ミス（3文字以上の名前の場合は惜しい扱い）
+    for (const target of validTargets) {
+      if (target.length >= 3 && levenshtein(rec, target) === 2) {
+        return { correct: false, score: 40, message: 'おしい！もうちょっと！', hint: `「${pref.displayName || prefName}」に近いよ！` };
       }
     }
     
@@ -104,9 +120,23 @@ const OCR = (() => {
 
     if (rec === normalize(capName)) return { correct: true, score: 100, message: 'かんぺき！' };
     if (rec === normalize(capBase)) return { correct: true, score: 95, message: 'せいかい！' };
+
+    // 部分一致（OCRで余計な文字が追加された場合）
+    const normCap = normalize(capName);
+    const normBase = normalize(capBase);
+    if (rec.includes(normBase) || normBase.includes(rec)) {
+      if (Math.abs(rec.length - normBase.length) <= 2) {
+        return { correct: true, score: 90, message: 'せいかい！' };
+      }
+    }
     
-    if (levenshtein(rec, normalize(capBase)) === 1 && rec.length === capBase.length) {
-      return { correct: false, score: 40, message: 'おしい！1文字だけちがうかも！', hint: `「${capName}」をもう一度書いてみよう！` };
+    // 1文字ミスは正解扱い（OCR誤認識を考慮）
+    if (levenshtein(rec, normBase) === 1 || levenshtein(rec, normCap) === 1) {
+      return { correct: true, score: 80, message: 'せいかい！（よく書けているよ！）' };
+    }
+
+    if (levenshtein(rec, normBase) === 2 && normBase.length >= 3) {
+      return { correct: false, score: 40, message: 'おしい！もうちょっと！', hint: `「${capName}」をもう一度書いてみよう！` };
     }
     return { correct: false, score: 0, message: `「${capName}」と書いてみよう！` };
   }

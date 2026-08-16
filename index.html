@@ -141,9 +141,11 @@
         <button class="region-tab" data-region="九州" role="tab">九州</button>
       </div>
 
-      <!-- 地図 -->
-      <svg id="japan-map" aria-label="日本地図"></svg>
-      <div id="map-tooltip" class="hidden" aria-hidden="true"></div>
+      <!-- 地図（スクロール可能） -->
+      <div id="map-scroll-area">
+        <svg id="japan-map" aria-label="日本地図"></svg>
+        <div id="map-tooltip" class="hidden" aria-hidden="true"></div>
+      </div>
 
       <!-- 地図の凡例 -->
       <div style="position:absolute;bottom:12px;left:12px;background:rgba(255,255,255,0.9);border-radius:12px;padding:8px 12px;font-size:0.72rem;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,0.1);">

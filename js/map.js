@@ -45,22 +45,28 @@ const JapanMap = (() => {
   function _render() {
     svgEl.selectAll('*').remove();
 
-    const container = svgEl.node().parentElement;
+    const container = document.getElementById('map-scroll-area') || svgEl.node().parentElement;
     const W = container.clientWidth || 500;
-    const H = container.clientHeight || 450;
+    const viewH = container.clientHeight || 450;
+    
+    // 地図を大きめ（縦1.6倍）に描画してスクロールさせる
+    const mapH = viewH * 1.6;
 
-    svgEl.attr('width', W).attr('height', H).attr('viewBox', `0 0 ${W} ${H}`);
+    svgEl.attr('width', W).attr('height', mapH).attr('viewBox', `0 0 ${W} ${mapH}`);
 
     const geoJsonData = topojson.feature(topoData, topoData.objects.japan);
     
-    // fitSizeを使ってSVG領域にピッタリ収まるように自動調整（北海道から沖縄まで）
-    projection = d3.geoMercator().fitSize([W, H], geoJsonData);
+    // fitSizeを使って縦長のSVG領域にピッタリ収まるように自動調整
+    projection = d3.geoMercator().fitSize([W, mapH], geoJsonData);
     pathGen = d3.geoPath().projection(projection);
 
     const features = geoJsonData.features;
     mapFeatures = features;
 
     gEl = svgEl.append('g').attr('class', 'map-g');
+    
+    // スクロール位置を一番上（北海道が見える位置）にリセット
+    container.scrollTop = 0;
 
     // 影エフェクト
     const defs = svgEl.append('defs');

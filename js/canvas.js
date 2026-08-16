@@ -15,6 +15,7 @@ class HandwritingCanvas {
     this.paths = [];
     this.currentPath = [];
     this.isDrawing = false;
+    this.activePointerId = null;
     this.lastX = 0;
     this.lastY = 0;
     this.undoStack = [];
@@ -41,17 +42,19 @@ class HandwritingCanvas {
 
   _bindEvents() {
     const c = this.canvas;
-    const opts = { passive: false };
     
-    // Pointer Events（マウス・タッチ・Apple Pencil）
-    // iOSでは touch-action: none がスクロール防止の標準。touchstartのpreventDefaultはPointer Eventを壊す原因になるため削除
+    // touch-action: none はスクロール・ズームを防ぐ（CSS側でも設定済みだが念のため）
     c.style.touchAction = 'none';
+    // iOSの長押しメニュー等を無効化
+    c.style.webkitTouchCallout = 'none';
+    c.style.webkitUserSelect = 'none';
 
-    c.addEventListener('pointerdown', e => this._onDown(e), opts);
-    c.addEventListener('pointermove', e => this._onMove(e), opts);
-    c.addEventListener('pointerup', e => this._onUp(e), opts);
-    c.addEventListener('pointercancel', e => this._onUp(e), opts);
-    c.addEventListener('pointerleave', e => this._onUp(e), opts);
+    // { passive: false } で preventDefault() を有効にする
+    c.addEventListener('pointerdown', e => this._onDown(e), { passive: false });
+    c.addEventListener('pointermove', e => this._onMove(e), { passive: false });
+    c.addEventListener('pointerup', e => this._onUp(e));
+    c.addEventListener('pointercancel', e => this._onCancel(e));
+    // pointerleave は使わない（setPointerCaptureと競合し、ストロークが途切れる原因になる）
   }
 
   _getPos(e) {
@@ -72,22 +75,29 @@ class HandwritingCanvas {
   _onDown(e) {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     
-    if (this.isDrawing) {
-      if (this.activePointerType === 'pen' && e.pointerType !== 'pen') {
-        // すでにペンで描画中の場合、手などが触れても無視する（完璧なパームリジェクション）
-        return;
-      }
-      if (this.activePointerType === 'touch' && e.pointerType === 'touch') {
-        // すでに手で描画中で、さらに別の指が触れた場合は無視する
+    // ★重要: ブラウザのジェスチャー認識（スクロール・ズーム）を完全にブロック
+    // これがないとiPadSafariがペンのpointerをcancelしてしまう
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // === pointerId ベースの排他制御 ===
+    // すでに描画中のポインターがある場合
+    if (this.activePointerId !== null && this.activePointerId !== undefined) {
+      if (e.pointerType === 'pen' && this.activePointerType !== 'pen') {
+        // ペンが来たら手を中断してペンに切り替える（ペン優先）
+        this._saveCurrentStroke();
+      } else {
+        // それ以外（手が2本目、ペン中に手が触れた等）は完全無視
         return;
       }
     }
     
-    // もし手で描画中にペンが触れたら、手の描画を中断してペンに切り替える（優先）
+    // この pointerId を描画対象として登録
+    this.activePointerId = e.pointerId;
     this.activePointerType = e.pointerType;
     this.isDrawing = true;
 
-    // PointerCaptureをセットすることで、キャンバス外に指が出てもイベントをトラッキングし続ける
+    // PointerCapture: このポインターのイベントを確実にこのCanvasで受け取る
     try { this.canvas.setPointerCapture(e.pointerId); } catch (err) {}
 
     const pos = this._getPos(e);
@@ -98,81 +108,97 @@ class HandwritingCanvas {
     if (this.onStrokeStart) this.onStrokeStart();
   }
 
-  _drawLiveSegment() {
+  // 新しいポイントからの描画セグメントを一括描画（高速化）
+  _drawSegments(startIdx) {
     const pts = this.currentPath;
-    const len = pts.length;
-    if (len < 2) {
-      if (len === 1 && !this.isDrawing) {
-        this.ctx.beginPath();
-        this.ctx.arc(pts[0].x, pts[0].y, (this.penSize * pts[0].p * 1.5) / 2, 0, Math.PI * 2);
-        this.ctx.fillStyle = this.penColor;
-        this.ctx.fill();
-      }
-      return;
-    }
+    if (pts.length < 2 || startIdx >= pts.length) return;
     
     this.ctx.strokeStyle = this.penColor;
     this.ctx.lineCap = 'round';
     this.ctx.lineJoin = 'round';
+    this.ctx.lineWidth = this.penSize * 1.2;
 
-    const p0 = pts[len - 2];
-    const p1 = pts[len - 1];
-    
+    // 全ての新しいセグメントを1つのパスにまとめて一括描画（高速）
     this.ctx.beginPath();
-    this.ctx.moveTo(p0.x, p0.y);
-    this.ctx.lineTo(p1.x, p1.y);
-    this.ctx.lineWidth = this.penSize * p1.p * 1.5;
+    this.ctx.moveTo(pts[Math.max(0, startIdx - 1)].x, pts[Math.max(0, startIdx - 1)].y);
+    for (let i = startIdx; i < pts.length; i++) {
+      this.ctx.lineTo(pts[i].x, pts[i].y);
+    }
     this.ctx.stroke();
   }
 
   _onMove(e) {
     if (!this.isDrawing) return;
-    
-    // このストロークを始めたポインター以外（手のひらなど）のイベントは完全に無視する（完璧なパームリジェクション）
-    if (e.pointerType !== this.activePointerType) return;
+    if (e.pointerId !== this.activePointerId) return;
     
     e.preventDefault();
+    e.stopPropagation();
 
-    const addPoint = (ev) => {
+    const prevLen = this.currentPath.length;
+
+    // 全ポイントを一気に収集（描画はまとめて後で行う）
+    const collectPoint = (ev) => {
       const pos = this._getPos(ev);
-      let p = this._getPressure(ev);
-      this.lastPressure = this.lastPressure * 0.4 + p * 0.6; // よりレスポンスよく
-
-      this.currentPath.push({ x: pos.x, y: pos.y, p: this.lastPressure });
-      this._drawLiveSegment();
+      this.currentPath.push({ x: pos.x, y: pos.y, p: this._getPressure(ev) });
     };
 
     if (e.getCoalescedEvents) {
       const events = e.getCoalescedEvents();
-      events.forEach(ev => addPoint(ev));
+      if (events.length > 0) {
+        for (let i = 0; i < events.length; i++) collectPoint(events[i]);
+      } else {
+        collectPoint(e);
+      }
     } else {
-      addPoint(e);
+      collectPoint(e);
     }
+
+    // 収集した全ポイントを1回のcanvas描画でまとめて描く
+    this._drawSegments(prevLen);
   }
 
   _onUp(e) {
     if (!this.isDrawing) return;
     // 違うポインター（手など）が離れたイベントは無視
-    if (e.pointerType !== this.activePointerType) return;
+    if (e.pointerId !== this.activePointerId) return;
     
     this.isDrawing = false;
+    this.activePointerId = null;
     
     try { this.canvas.releasePointerCapture(e.pointerId); } catch (err) {}
 
     const pos = this._getPos(e);
     let p = this._getPressure(e);
+    const prevLen = this.currentPath.length;
     this.currentPath.push({ x: pos.x, y: pos.y, p: p });
-    this._drawLiveSegment();
+    this._drawSegments(prevLen);
 
+    this._saveCurrentStroke();
+    
+    if (this.onStrokeEnd) this.onStrokeEnd();
+  }
 
+  // pointercancel: ブラウザがポインターを強制中断した場合（ジェスチャー認識等）
+  // ストロークを失わないように、途中までの描画を保存する
+  _onCancel(e) {
+    if (!this.isDrawing) return;
+    if (e.pointerId !== this.activePointerId) return;
+    
+    this.isDrawing = false;
+    this.activePointerId = null;
 
+    // 途中までのストロークを保存（描画データを失わない）
+    this._saveCurrentStroke();
+    
+    if (this.onStrokeEnd) this.onStrokeEnd();
+  }
+
+  _saveCurrentStroke() {
     if (this.currentPath.length > 0) {
       this.paths.push({ points: [...this.currentPath], penSize: this.penSize, color: this.penColor });
       this.undoStack.push('path');
     }
     this.currentPath = [];
-    
-    if (this.onStrokeEnd) this.onStrokeEnd();
   }
 
   _clear(silent = false) {
@@ -280,51 +306,76 @@ class HandwritingCanvas {
 
   // Canvas → Base64 PNG（OCR用・白背景、ガイドライン除去、高コントラスト化）
   toBase64() {
+    // 全ストロークからバウンディングボックスを計算
+    const allPaths = [...this.paths];
+    if (this.currentPath.length > 0) {
+      allPaths.push({ points: [...this.currentPath], penSize: this.penSize });
+    }
+    if (allPaths.length === 0) return '';
+
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const path of allPaths) {
+      for (const pt of path.points) {
+        if (pt.x < minX) minX = pt.x;
+        if (pt.y < minY) minY = pt.y;
+        if (pt.x > maxX) maxX = pt.x;
+        if (pt.y > maxY) maxY = pt.y;
+      }
+    }
+
+    // コンテンツのサイズ（最小80pxを確保: 「二」のような薄い文字が潰れないようにする）
+    const contentW = Math.max(maxX - minX, 80) || 80;
+    const contentH = Math.max(maxY - minY, 80) || 80;
+
+    // 固定サイズのOCR用キャンバス（400x400px、余白15%）
+    const OCR_SIZE = 400;
+    const PADDING = 0.15;
+    const drawArea = OCR_SIZE * (1 - PADDING * 2);
+    const scaleFactor = Math.min(drawArea / contentW, drawArea / contentH);
+    // バウンディングボックスの中心を使う（最小サイズ保証のためオリジナルの値で計算）
+    const origW = maxX - minX || 1;
+    const origH = maxY - minY || 1;
+    const offsetX = (OCR_SIZE - origW * scaleFactor) / 2;
+    const offsetY = (OCR_SIZE - origH * scaleFactor) / 2;
+
     const tmpCanvas = document.createElement('canvas');
-    const scale = Math.min(600 / this.canvas.width, 600 / this.canvas.height, 1);
-    const W = Math.round(this.canvas.width * scale) || 600;
-    const H = Math.round(this.canvas.height * scale) || 600;
-    
-    tmpCanvas.width = W; 
-    tmpCanvas.height = H;
+    tmpCanvas.width = OCR_SIZE;
+    tmpCanvas.height = OCR_SIZE;
     const tmpCtx = tmpCanvas.getContext('2d');
 
     // 完全な白背景
     tmpCtx.fillStyle = '#ffffff';
-    tmpCtx.fillRect(0, 0, W, H);
+    tmpCtx.fillRect(0, 0, OCR_SIZE, OCR_SIZE);
 
-    const dpr = window.devicePixelRatio || 1;
-    tmpCtx.scale(W / (this.canvas.width / dpr), H / (this.canvas.height / dpr));
+    // 固定の線の太さ（5px - 細すぎると「二」の2本線がかすれて認識されない）
+    const LINE_WIDTH = 5;
+    tmpCtx.strokeStyle = '#000000';
+    tmpCtx.fillStyle = '#000000';
+    tmpCtx.lineCap = 'round';
+    tmpCtx.lineJoin = 'round';
+    tmpCtx.lineWidth = LINE_WIDTH;
 
-    // OCR用に、点線のガイドを排除し、真っ黒で一定の太さの線を描画する関数
-    const drawForOCR = (path) => {
+    for (const path of allPaths) {
       const pts = path.points;
-      if (pts.length === 0) return;
-      tmpCtx.strokeStyle = '#000000'; // コントラスト最大化
-      tmpCtx.lineCap = 'round';
-      tmpCtx.lineJoin = 'round';
+      if (pts.length === 0) continue;
+
+      // 座標を正規化してOCRキャンバスに描画
+      const tx = (pt) => (pt.x - minX) * scaleFactor + offsetX;
+      const ty = (pt) => (pt.y - minY) * scaleFactor + offsetY;
 
       if (pts.length === 1) {
         tmpCtx.beginPath();
-        tmpCtx.arc(pts[0].x, pts[0].y, path.penSize / 2, 0, Math.PI * 2);
-        tmpCtx.fillStyle = '#000000';
+        tmpCtx.arc(tx(pts[0]), ty(pts[0]), LINE_WIDTH / 2, 0, Math.PI * 2);
         tmpCtx.fill();
-        return;
+        continue;
       }
 
       tmpCtx.beginPath();
-      tmpCtx.moveTo(pts[0].x, pts[0].y);
+      tmpCtx.moveTo(tx(pts[0]), ty(pts[0]));
       for (let i = 1; i < pts.length; i++) {
-        tmpCtx.lineTo(pts[i].x, pts[i].y);
+        tmpCtx.lineTo(tx(pts[i]), ty(pts[i]));
       }
-      // 線が重なって真っ黒の塊（潰れ）になるのを防ぐため、少し細めの一定の太さで描画する（OCR最適化）
-      tmpCtx.lineWidth = path.penSize * 0.8;
       tmpCtx.stroke();
-    };
-
-    this.paths.forEach(p => drawForOCR(p));
-    if (this.currentPath.length > 0) {
-      drawForOCR({ points: this.currentPath, penSize: this.penSize });
     }
 
     const dataURL = tmpCanvas.toDataURL('image/png');
